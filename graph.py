@@ -26,9 +26,9 @@ class Edge:
             s = s + " ["
             if(self.p):
                 if(self.connection_type):
-                    s = s + "label = \"%s, \np = %.2f\",%s" % (self.connection_type, self.p, direction)
+                    s = s + "label = \"%s, \\np = %.2f\",%s" % (self.connection_type, self.p, direction)
                 else:
-                    s = s + "label = \"\np = %.2f\"," % (self.p)
+                    s = s + "label = \"\\np = %.2f\"," % (self.p)
             if(self.fontsize):
                 s = s + "fontsize = %d," % self.fontsize
             if(self.source == "RND" or self.sink == "RND"):
