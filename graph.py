@@ -110,7 +110,7 @@ def main():
 
     dotfile.write("subgraph cluster_cortex\n{\n    label = \"Cortex\"\n")
     dotfile.write("    style = filled\n")
-    dotfile.write("    color = lightgrey\n")
+    dotfile.write("    color = lightpink1\n")
     for node in cortex_set:
         write_node(dotfile,node)
     dotfile.write("}\n")
@@ -129,7 +129,7 @@ def main():
 
 
 
-    el.write_edges(dotfile)
+    el.write_edges(dotfile, cortex_set, thalamus_set)
     dotfile.write('}')
     f.close()
     dotfile.close()
@@ -192,9 +192,9 @@ class Edge_List:
 
             return None
 
-    def write_edges(self, fp):
+    def write_edges(self, fp, cortex_set, thalamus_set):
         for edge in self.edges:
-            fp.write("    "  + str(edge) + '\n')
+            fp.write("    "  + edge.to_string(cortex_set, thalamus_set) + '\n')
 
 class Edge:
     def __init__(self, source, sink, connection_type, p, fontsize):
@@ -208,7 +208,7 @@ class Edge:
             self.bi = False
         self.fontsize = fontsize
 
-    def to_string(self):
+    def to_string(self, cortex_set, thalamus_set):
         s = self.source + " -> " + self.sink
         if(self.bi):
             direction = "dir=\"both\","
@@ -225,15 +225,17 @@ class Edge:
                 s = s + "fontsize = %d," % self.fontsize
             if(self.source == "RND" or self.sink == "RND"):
                 s = s + "style=dashed,"
+
+            if(self.source in cortex_set and self.sink in thalamus_set):
+                s = s + "color=red,"
+
+            if(self.sink in cortex_set and self.source in thalamus_set):
+                s = s + "color=blue,"
+
             s = s + "]"
 
         s = s + ";"
         return s
 
-    def __str__(self):
-        return self.to_string()
-
-    def __repr__(self):
-        return self.to_string()
 if __name__ == "__main__":
     main()
