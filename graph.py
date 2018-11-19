@@ -35,12 +35,10 @@ def main():
 
             curr_output_line = ''
             con_type = None
-            print(line)
             s = line.split('.')
             t = s[0].split('_')
             sink = t[0]
             source = t[1]
-
 
             if sink not in node_set:
                 #create node
@@ -50,18 +48,10 @@ def main():
                 #create node
                 node_set.add(source)
 
-
             #type might not be specified, like with RND case
             if(len(t) == 3):
                 con_type = t[2]
 
-            print("Source: %s" % source)
-            print("Sink: %s" % sink)
-
-            if(con_type):
-                print("Type: %s" % con_type)
-            else:
-                print("Type: random")
             rj = jj.findall(line)
             ri = ii.findall(line)
 
@@ -70,7 +60,6 @@ def main():
 
             #need to get p value from previous connection
             if(ri and rj):
-                print("Repeat earlier")
                 el.repeat_edge(source,sink, con_type)
 
             #should never occur
@@ -84,7 +73,6 @@ def main():
             #should only occur if a previous gap juntion is defined, make sure
             #to check that this is the case
             elif(mij and mji):
-                print("Mirror earlier")
                 e = el.get_edge(sink, source, con_type)
                 if(not e):
                     print("Earlier gap junction not found, exiting...")
@@ -95,28 +83,14 @@ def main():
 
             else:
                 #no special cases detected
-                #e = gv.edge(source, sink, source + sink)
-                curr_output_line = curr_output_line + '%s -> %s' % (source, sink)
-
                 d = 1
                 p_matches = p.findall(line)
                 if(p_matches):
-                    print("has a p")
                     d = dec.findall(p_matches[0])[0]
                     d = float(d)
 
-                    print("P: %.2f" % float(d))
-                    curr_output_line = curr_output_line + ' [label = \"p = %s\"]' % d
-
-
-                print("e source: %s" % source)
-                print("ct: %s" % con_type)
                 el.new_edge(source, sink, connection_type = con_type, p = d)
 
-
-            curr_output_line = curr_output_line + ';\n'
-            print(curr_output_line)
-            print("--------")
 
     dotfile = open(dot_filename, 'w+')
     dotfile.write('digraph network {\n')
@@ -134,23 +108,24 @@ def main():
         else:
             other_set.add(node)
 
-    dotfile.write("subgraph cluster_cortex\n{\n")
+    dotfile.write("subgraph cluster_cortex\n{\n    label = \"Cortex\"\n")
+    dotfile.write("    style = filled\n")
+    dotfile.write("    color = lightgrey\n")
     for node in cortex_set:
         write_node(dotfile,node)
     dotfile.write("}\n")
 
-    dotfile.write("subgraph cluster_thalamus\n{\n")
+    dotfile.write("subgraph cluster_thalamus\n{\n    label = \"Thalamus\"\n")
+    dotfile.write("    style = filled\n")
+    dotfile.write("    color = lightblue\n")
     for node in thalamus_set:
         write_node(dotfile,node)
     dotfile.write("}\n")
 
-    print("Nodes not part of any predefined group:")
+    print("\nNodes not part of any predefined group:")
     for node in other_set:
         write_node(dotfile,node)
         print(node)
-
-
-    #dotfile.write("}\n")
 
 
 
@@ -158,9 +133,10 @@ def main():
     dotfile.write('}')
     f.close()
     dotfile.close()
+    print("\nOutput written to: %s\n" % dot_filename)
 
 def write_node(fp, node):
-    fp.write("    %s [height=2, width=2, fontsize = 30];\n" % node)
+    fp.write("    %s [height=2, width=2, fontsize = 30, style = \"filled,solid\", fillcolor = white];\n" % node)
 
 
 
@@ -180,6 +156,8 @@ class Edge_List:
             print(sink)
             print(connection_type)
             print(edges)
+            print("Exiting")
+            exit(1)
 
         self.new_edge(sink, source, connection_type, p = e.p, fontsize =
                 e.fontsize)
@@ -224,7 +202,6 @@ class Edge:
         self.sink = sink
         self.connection_type = connection_type
         self.p = p
-        print(self.p)
         if(self.connection_type == 'gj'):
             self.bi = True
         else:
