@@ -75,6 +75,9 @@ def main():
             elif(mij and mji):
                 e = el.get_edge(sink, source, con_type)
                 if(not e):
+                    print(sink)
+                    print(source)
+                    print(con_type)
                     print("Earlier gap junction not found, exiting...")
                     exit(1)
 
@@ -96,29 +99,64 @@ def main():
     dotfile.write('digraph network {\n')
 
 
-    cortex_set = set()
-    thalamus_set = set()
+    cortex_set = (set(), set())
+    thalamus_set = (set(), set())
     other_set = set()
 
     for node in node_set:
-        if(node in cortex_options):
-            cortex_set.add(node)
-        elif(node in thalamus_options):
-            thalamus_set.add(node)
-        else:
+        found = False
+        for item in cortex_options:
+            if(item in node):
+                if(node[-1] == 'L'):
+                    cortex_set[0].add(node)
+                elif(node[-1] == 'R'):
+                    cortex_set[1].add(node)
+                else:
+                    print("Cortical neuron not lateralized? (%s) Exiting..." % node)
+                    exit(1)
+                found = True
+                break
+        if not found:
+          for item in thalamus_options:
+            if(item in node):
+                if(node[-1] == 'L'):
+                    thalamus_set[0].add(node)
+                elif(node[-1] == 'R'):
+                    thalamus_set[1].add(node)
+                else:
+                    print("Thalamic neuron not lateralized? (%s) Exiting..." % node)
+                    exit(1)
+                found = True
+                break
+
+        if not found:
             other_set.add(node)
 
-    dotfile.write("subgraph cluster_cortex\n{\n    label = \"Cortex\"\n")
+    dotfile.write("subgraph cluster_cortex_left\n{\n    label = \"Cortex\"\n")
     dotfile.write("    style = filled\n")
     dotfile.write("    color = lightpink1\n")
-    for node in cortex_set:
+    for node in cortex_set[0]:
         write_node(dotfile,node)
     dotfile.write("}\n")
 
-    dotfile.write("subgraph cluster_thalamus\n{\n    label = \"Thalamus\"\n")
+    dotfile.write("subgraph cluster_cortex_right\n{\n    label = \"Cortex\"\n")
+    dotfile.write("    style = filled\n")
+    dotfile.write("    color = lightpink1\n")
+    for node in cortex_set[1]:
+        write_node(dotfile,node)
+    dotfile.write("}\n")
+
+    dotfile.write("subgraph cluster_thalamus_left\n{\n    label = \"Thalamus\"\n")
     dotfile.write("    style = filled\n")
     dotfile.write("    color = lightblue\n")
-    for node in thalamus_set:
+    for node in thalamus_set[0]:
+        write_node(dotfile,node)
+    dotfile.write("}\n")
+
+    dotfile.write("subgraph cluster_thalamus_right\n{\n    label = \"Thalamus\"\n")
+    dotfile.write("    style = filled\n")
+    dotfile.write("    color = lightblue\n")
+    for node in thalamus_set[1]:
         write_node(dotfile,node)
     dotfile.write("}\n")
 
@@ -226,10 +264,37 @@ class Edge:
             if(self.source == "RND" or self.sink == "RND"):
                 s = s + "style=dashed,"
 
-            if(self.source in cortex_set and self.sink in thalamus_set):
+            cortex_source = False
+            cortex_sink = False
+            for i in cortex_set:
+                for item in i:
+                    if self.source in item:
+                        cortex_source = True
+                        break
+                    if self.sink in item:
+                        cortex_sink = True
+                        break
+
+            if(cortex_source or cortex_sink):
+
+                thalamus_source = False
+                thalamus_sink = False
+
+                for i in thalamus_set:
+                    source_flag = False
+                    sink_flag = False
+                    for item in i:
+                        if self.source in item:
+                            thalamus_source = True
+                            break
+                        if self.sink in item:
+                            thalamus_sink = True
+                            break
+
+            if(cortex_source and thalamus_sink):
                 s = s + "color=red,"
 
-            if(self.sink in cortex_set and self.source in thalamus_set):
+            if(cortex_sink and thalamus_source):
                 s = s + "color=blue,"
 
             s = s + "]"
