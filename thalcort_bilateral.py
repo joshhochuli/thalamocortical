@@ -15,39 +15,39 @@ def main():
     C = 1*uF/cm**2
 
     #Leak Variables
-    gL = 0.01*mS/cm**2		#average g_L value +- 0.0025, uniformly distributed	
+    gL = 0.01*mS/cm**2          #average g_L value +- 0.0025, uniformly distributed
     e_KL = -90*mV
 
     #Ca Variables
     F = 96489*coulomb/mole
-    w = 0.5*um 			
-    z = 2		
+    w = 0.5*um
+    z = 2
     ca_Rest = 5e-5*mM
 
     #iCa Variables
     R = 8.32441*joule/(mole*kelvin)
     T = 309.15*kelvin
-    eca0 = R*T/(2*F)   		
-    ca_0 = 2*mM		
+    eca0 = R*T/(2*F)
+    ca_0 = 2*mM
 
     #iCat Variables
     g_Cat = 2.1*mS/cm**2
 
     #iNa Variables
-    g_Na = 90*mS/cm**2 		
-    e_Na = 50*mV			
+    g_Na = 90*mS/cm**2
+    e_Na = 50*mV
 
     #iK Variables
     g_K = 10*mS/cm**2
-    e_K = -90*mV 			#-80*mV in INaK, -90*mV in paper
+    e_K = -90*mV                        #-80*mV in INaK, -90*mV in paper
 
-    #iH Variables	HTC
+    #iH Variables       HTC
     e_H = -43*mV
 
-    #iAHP Variables		
-    e_AHP = -90*mV			#e_K
+    #iAHP Variables
+    e_AHP = -90*mV                      #e_K
 
-    #iCan Variables	
+    #iCan Variables
     e_Can = 10*mV
 
     #Number of Each Cell Type(sqrt of # Thalamus Cells)
@@ -68,203 +68,203 @@ def main():
     #Modular Equation Expressions
     #Main HH Equation, HTC, RTC
     main_TC = '''
-    dv/dt=(-g_L*(v-e_L)-g_KL*(v-e_KL)-iCa-iCal-iCat-iNa-iK-iH-iAHP-iCan-iSyn+iStm)/C:volt
-    e_L																				:volt
-    g_KL																			:siemens/meter**2
-    g_L																				:siemens/meter**2
+    dv/dt=(-g_L*(v-e_L)-g_KL*(v-e_KL)-iCa-iCal-iCat-iNa-iK-iH-iAHP-iCan-iSyn+iStm)/C            :volt
+    e_L                                                                                         :volt
+    g_KL                                                                                        :siemens/meter**2
+    g_L                                                                                         :siemens/meter**2
     '''
 
     #Main HH Equation, IN
     main_IN = '''
-    dv/dt=(-g_L*(v-e_L)-g_KL*(v-e_KL)-iCa-iNa-iK-iH-iAHP-iCan-iSyn+iStm)/C			:volt
-    e_L																				:volt
-    g_KL																			:siemens/meter**2
-    g_L																				:siemens/meter**2
+    dv/dt=(-g_L*(v-e_L)-g_KL*(v-e_KL)-iCa-iNa-iK-iH-iAHP-iCan-iSyn+iStm)/C                      :volt
+    e_L                                                                                         :volt
+    g_KL                                                                                        :siemens/meter**2
+    g_L                                                                                         :siemens/meter**2
     '''
 
     #Main HH Equation, RE
     main_RE = '''
-    dv/dt=(-g_L*(v-e_L)-g_KL*(v-e_KL)-iCa-iNa-iK-iAHP-iCan-iSyn+iStm)/C				:volt
-    e_L																				:volt
-    g_KL																			:siemens/meter**2
-    g_L																				:siemens/meter**2
+    dv/dt=(-g_L*(v-e_L)-g_KL*(v-e_KL)-iCa-iNa-iK-iAHP-iCan-iSyn+iStm)/C                         :volt
+    e_L                                                                                         :volt
+    g_KL                                                                                        :siemens/meter**2
+    g_L                                                                                         :siemens/meter**2
     '''
 
     #Ca_TC, HTC, RTC
     Ca_TC ='''
-    tau_Ca = 10*ms																	:second					
-    drive = -(iCa+iCat+iCal)/(z*F*w)*(-(iCa+iCat+iCal)/(z*F*w)>=0*mM/second)		:mM/second	
-    dca/dt = drive + (ca_Rest - ca)/tau_Ca											:mM
+    tau_Ca = 10*ms                                                                              :second
+    drive = -(iCa+iCat+iCal)/(z*F*w)*(-(iCa+iCat+iCal)/(z*F*w)>=0*mM/second)                    :mM/second
+    dca/dt = drive + (ca_Rest - ca)/tau_Ca                                                      :mM
     '''
 
     #Ca_RE_IN, IN, RE
     Ca_RE_IN ='''
-    tau_Ca																			:second					
-    drive = -iCa/(z*F*w)*(-iCa/(z*F*w)>=0*mM/second)								:mM/second	
-    dca/dt = drive + (ca_Rest - ca)/tau_Ca											:mM
+    tau_Ca                                                                                      :second
+    drive = -iCa/(z*F*w)*(-iCa/(z*F*w)>=0*mM/second)                                            :mM/second
+    dca/dt = drive + (ca_Rest - ca)/tau_Ca                                                      :mM
     '''
 
     #iCa, current 0, T0_TC
     i_Ca = '''
-    g_Ca																			:siemens/meter**2				
-    e_Ca = eca0*log(ca_0/ca) 														:volt
-    m0_inf = 1/(1+exp(-(v+34*mV)/(6.2*mV))) 										:1		
-    tau_m0 = 0.612*ms+1*ms/(exp(-(v+107*mV)/(16.7*mV))+exp((v-8.2*mV)/(18.2*mV)))	:second	
-    dm0/dt = 4.6*(m0_inf-m0)/tau_m0													:1
-    h0_inf = 1/(1+exp((v+58*mV)/(4*mV)))											:1
-    tau_h0a = (1*ms)*(exp((v+442*mV)/(66.6*mV)))*(v < -55*mV)						:second
-    tau_h0b = 28*ms+(1*ms)*(exp(-(v-3*mV)/(10.5*mV)))*(v >= -55*mV)					:second
-    tau_h0 = tau_h0a + tau_h0b														:second		
-    dh0/dt = 3.7*(h0_inf-h0)/tau_h0	 												:1
-    iCa = g_Ca*m0**2*h0*(v-e_Ca) 													:amp/meter**2
+    g_Ca                                                                                        :siemens/meter**2
+    e_Ca = eca0*log(ca_0/ca)                                                                    :volt
+    m0_inf = 1/(1+exp(-(v+34*mV)/(6.2*mV)))                                                     :1
+    tau_m0 = 0.612*ms+1*ms/(exp(-(v+107*mV)/(16.7*mV))+exp((v-8.2*mV)/(18.2*mV)))               :second
+    dm0/dt = 4.6*(m0_inf-m0)/tau_m0                                                             :1
+    h0_inf = 1/(1+exp((v+58*mV)/(4*mV)))                                                        :1
+    tau_h0a = (1*ms)*(exp((v+442*mV)/(66.6*mV)))*(v < -55*mV)                                   :second
+    tau_h0b = 28*ms+(1*ms)*(exp(-(v-3*mV)/(10.5*mV)))*(v >= -55*mV)                             :second
+    tau_h0 = tau_h0a + tau_h0b                                                                  :second
+    dh0/dt = 3.7*(h0_inf-h0)/tau_h0                                                             :1
+    iCa = g_Ca*m0**2*h0*(v-e_Ca)                                                                :amp/meter**2
     '''
 
     #iCa_RE, current 0
     i_Ca_RE = '''
-    g_Ca = 1.3*mS/cm**2																:siemens/meter**2 
-    e_Ca = eca0*log(ca_0/ca) 														:volt
-    m0_inf = 1/(1+exp(-(v+55*mV)/(7.4*mV))) 										:1		
-    tau_m0 = 3*ms + 1*ms/(exp(-(v+105*mV)/(15*mV))+exp((v+30*mV)/(10*mV)))			:second	
-    dm0/dt = 6.9*(m0_inf-m0)/tau_m0													:1
-    h0_inf = 1/(1+exp((v+83*mV)/(5*mV)))											:1	
-    tau_h0 = 85*ms + 1*ms/(exp(-(v+410*mV)/(50*mV))+exp((v+51*mV)/(4*mV)))			:second		
-    dh0/dt = 3.7*(h0_inf-h0)/tau_h0	 												:1
-    iCa = g_Ca*m0**2*h0*(v-e_Ca) 													:amp/meter**2
+    g_Ca = 1.3*mS/cm**2                                                                         :siemens/meter**2
+    e_Ca = eca0*log(ca_0/ca)                                                                    :volt
+    m0_inf = 1/(1+exp(-(v+55*mV)/(7.4*mV)))                                                     :1
+    tau_m0 = 3*ms + 1*ms/(exp(-(v+105*mV)/(15*mV))+exp((v+30*mV)/(10*mV)))                      :second
+    dm0/dt = 6.9*(m0_inf-m0)/tau_m0                                                             :1
+    h0_inf = 1/(1+exp((v+83*mV)/(5*mV)))                                                        :1
+    tau_h0 = 85*ms + 1*ms/(exp(-(v+410*mV)/(50*mV))+exp((v+51*mV)/(4*mV)))                      :second
+    dh0/dt = 3.7*(h0_inf-h0)/tau_h0                                                             :1
+    iCa = g_Ca*m0**2*h0*(v-e_Ca)                                                                :amp/meter**2
     '''
 
     #iCat, current 1, IT0_TC
     i_Cat = '''
-    m1_inf = 1/(1+exp(-(v+62*mV)/(6.2*mV))) 										:1		
-    tau_m1 = 0.612*ms+1*ms/(exp(-(v+135*mV)/(16.7*mV))+exp((v+19.8*mV)/(18.2*mV)))	:second	
-    dm1/dt = 4.6*(m1_inf-m1)/tau_m1													:1
-    h1_inf = 1/(1+exp((v+86*mV)/(4*mV)))											:1
-    tau_h1a = (1*ms)*(exp((v+470*mV)/(66.6*mV)))*(v < -83*mV)						:second
-    tau_h1b = 28*ms+(1*ms)*(exp(-(v+25*mV)/(10.5*mV)))*(v >= -83*mV)				:second
-    tau_h1 = tau_h1a + tau_h1b														:second		
-    dh1/dt = 3.7*(h1_inf-h1)/tau_h1	 												:1
-    iCat = g_Cat*m1**2*h1*(v-e_Ca) 													:amp/meter**2
+    m1_inf = 1/(1+exp(-(v+62*mV)/(6.2*mV)))                                                     :1
+    tau_m1 = 0.612*ms+1*ms/(exp(-(v+135*mV)/(16.7*mV))+exp((v+19.8*mV)/(18.2*mV)))              :second
+    dm1/dt = 4.6*(m1_inf-m1)/tau_m1                                                             :1
+    h1_inf = 1/(1+exp((v+86*mV)/(4*mV)))                                                        :1
+    tau_h1a = (1*ms)*(exp((v+470*mV)/(66.6*mV)))*(v < -83*mV)                                   :second
+    tau_h1b = 28*ms+(1*ms)*(exp(-(v+25*mV)/(10.5*mV)))*(v >= -83*mV)                            :second
+    tau_h1 = tau_h1a + tau_h1b                                                                  :second
+    dh1/dt = 3.7*(h1_inf-h1)/tau_h1                                                             :1
+    iCat = g_Cat*m1**2*h1*(v-e_Ca)                                                              :amp/meter**2
     '''
 
     #iCal, current 2, ICaL_TC
     i_Cal = '''
-    g_Cal 																			:siemens/meter**2 
-    m2_inf = 1/(1+exp(-(v+10*mV)/(4*mV))) 											:1		
-    tau_m2 = 0.4*ms + 0.7*ms/(exp(-(v+5*mV)/(15*mV))+exp((v+5*mV)/(15*mV)))			:second	
-    dm2/dt = 4.6*(m2_inf-m2)/tau_m2													:1
-    h2_inf = 1/(1+exp((v+25*mV)/(2*mV)))											:1
-    tau_h2 = 300*ms+(100*ms)/(exp(-(v+40*mV)/(9.5*mV))+exp((v+40*mV)/(9.5*mV)))		:second	
-    dh2/dt = 3.7*(h2_inf-h2)/tau_h2	 												:1
-    iCal = g_Cal*m2**2*h2*(v-e_Ca) 													:amp/meter**2
-    ''' 
+    g_Cal                                                                                       :siemens/meter**2
+    m2_inf = 1/(1+exp(-(v+10*mV)/(4*mV)))                                                       :1
+    tau_m2 = 0.4*ms + 0.7*ms/(exp(-(v+5*mV)/(15*mV))+exp((v+5*mV)/(15*mV)))                     :second
+    dm2/dt = 4.6*(m2_inf-m2)/tau_m2                                                             :1
+    h2_inf = 1/(1+exp((v+25*mV)/(2*mV)))                                                        :1
+    tau_h2 = 300*ms+(100*ms)/(exp(-(v+40*mV)/(9.5*mV))+exp((v+40*mV)/(9.5*mV)))                 :second
+    dh2/dt = 3.7*(h2_inf-h2)/tau_h2                                                             :1
+    iCal = g_Cal*m2**2*h2*(v-e_Ca)                                                              :amp/meter**2
+    '''
 
     #iNa, current 3, INaK
     i_Na = '''
-    v_SH																			:volt
-    a_m3 = (0.32*ms**-1*mV**-1)*(v-v_SH-13*mV)/(1-exp(-(v-v_SH-13*mV)/(4*mV)))		:Hz 	
-    b_m3 = (-0.28*mV**-1*ms**-1)*(v-v_SH-40*mV)/(1-exp((v-v_SH-40*mV)/(5*mV)))		:Hz	
-    dm3/dt = (a_m3*(1-m3)-b_m3*m3)													:1	
-    a_h3 = (0.128*ms**-1)*exp(-(v-v_SH-17*mV)/(18*mV))								:Hz		
-    b_h3 = (4*ms**-1)/(1+exp(-(v-v_SH-40*mV)/(5*mV)))								:Hz	
-    dh3/dt = (a_h3*(1-h3)-b_h3*h3)													:1		
-    iNa = g_Na*m3**3*h3*(v-e_Na) 													:amp/meter**2
+    v_SH                                                                                        :volt
+    a_m3 = (0.32*ms**-1*mV**-1)*(v-v_SH-13*mV)/(1-exp(-(v-v_SH-13*mV)/(4*mV)))                  :Hz
+    b_m3 = (-0.28*mV**-1*ms**-1)*(v-v_SH-40*mV)/(1-exp((v-v_SH-40*mV)/(5*mV)))                  :Hz
+    dm3/dt = (a_m3*(1-m3)-b_m3*m3)                                                              :1
+    a_h3 = (0.128*ms**-1)*exp(-(v-v_SH-17*mV)/(18*mV))                                          :Hz
+    b_h3 = (4*ms**-1)/(1+exp(-(v-v_SH-40*mV)/(5*mV)))                                           :Hz
+    dh3/dt = (a_h3*(1-h3)-b_h3*h3)                                                              :1
+    iNa = g_Na*m3**3*h3*(v-e_Na)                                                                :amp/meter**2
     '''
 
     #iK, current 4, INaK
     i_K = '''
-    tm																				:1					
-    a_m4 = tm*(0.032*ms**-1*mV**-1)*(v-v_SH-15*mV)/(1-exp(-(v-v_SH-15*mV)/(5*mV)))	:Hz	
-    b_m4 = tm*(0.5*ms**-1)*exp(-(v-v_SH-10*mV)/(40*mV))								:Hz		
-    dm4/dt = (a_m4*(1-m4)-b_m4*m4)													:1		
-    iK = g_K*m4**4*(v-e_K) 															:amp/meter**2
+    tm                                                                                          :1
+    a_m4 = tm*(0.032*ms**-1*mV**-1)*(v-v_SH-15*mV)/(1-exp(-(v-v_SH-15*mV)/(5*mV)))              :Hz
+    b_m4 = tm*(0.5*ms**-1)*exp(-(v-v_SH-10*mV)/(40*mV))                                         :Hz
+    dm4/dt = (a_m4*(1-m4)-b_m4*m4)                                                              :1
+    iK = g_K*m4**4*(v-e_K)                                                                      :amp/meter**2
     '''
 
     #iH, current 5, Ih_TC
     i_H = '''
-    g_H																				:siemens/meter**2 
-    m5_inf = 1/(1+exp((v+75*mV)/(5.5*mV))) 											:1
-    tau_m5 = 1*ms/(exp(-0.086/mV*v-14.59)+exp(0.0701/mV*v-1.87))					:second
-    dm5/dt = (m5_inf-m5)/(tau_m5) 													:1
-    iH = g_H*m5*(v-e_H) 															:amp/meter**2
+    g_H                                                                                         :siemens/meter**2
+    m5_inf = 1/(1+exp((v+75*mV)/(5.5*mV)))                                                      :1
+    tau_m5 = 1*ms/(exp(-0.086/mV*v-14.59)+exp(0.0701/mV*v-1.87))                                :second
+    dm5/dt = (m5_inf-m5)/(tau_m5)                                                               :1
+    iH = g_H*m5*(v-e_H)                                                                         :amp/meter**2
     '''
 
     #iAHP, current 6, Iahp2
     i_AHP = '''
-    g_AHP																			:siemens/meter**2
-    m6_inf = 48*ca**2/(48*ca**2+0.09*mM**2)											:1
-    tau_m6 = (1*ms*mM**2)/(48*ca**2+0.09*mM**2)										:second
-    dm6/dt = (m6_inf - m6)/(tau_m6) 												:1
-    iAHP = g_AHP*m6*(v-e_AHP) 														:amp/meter**2
+    g_AHP                                                                                       :siemens/meter**2
+    m6_inf = 48*ca**2/(48*ca**2+0.09*mM**2)                                                     :1
+    tau_m6 = (1*ms*mM**2)/(48*ca**2+0.09*mM**2)                                                 :second
+    dm6/dt = (m6_inf - m6)/(tau_m6)                                                             :1
+    iAHP = g_AHP*m6*(v-e_AHP)                                                                   :amp/meter**2
     '''
 
     #iCan, current 7, Ican_TC
     i_Can = '''
-    g_Can																			:siemens/meter**2
-    mCa = ca/(0.2*mM+ca) 															:1
-    m7_inf = 1/(1+exp(-(v+43*mV)/(5.2*mV)))											:1
-    tau_m7 = 1.6*ms+(2.7*ms)/(exp(-(v+55*mV)/(15*mV))+exp((v+55*mV)/(15*mV)))		:second
-    dm7/dt = (m7_inf - m7)/(tau_m7) 												:1
-    iCan = g_Can*mCa*m7*(v-e_Can) 													:amp/meter**2
+    g_Can                                                                                       :siemens/meter**2
+    mCa = ca/(0.2*mM+ca)                                                                        :1
+    m7_inf = 1/(1+exp(-(v+43*mV)/(5.2*mV)))                                                     :1
+    tau_m7 = 1.6*ms+(2.7*ms)/(exp(-(v+55*mV)/(15*mV))+exp((v+55*mV)/(15*mV)))                   :second
+    dm7/dt = (m7_inf - m7)/(tau_m7)                                                             :1
+    iCan = g_Can*mCa*m7*(v-e_Can)                                                               :amp/meter**2
     '''
 
     #iStim, General, Time-Dependent Stimulus
     i_Stim = '''
-    n_Stim 																			:meter**2
-    mag																				:amp
-    iStm = (t > 1*second)*(t < 2*second)*mag/n_Stim									:amp/meter**2
+    n_Stim                                                                                      :meter**2
+    mag                                                                                         :amp
+    iStm = (t > 1*second)*(t < 2*second)*mag/n_Stim                                             :amp/meter**2
     '''
 
     #iSyn, Synapse Currents, RE
     i_Syn = '''
-    igj																				:amp
-    igjHR																			:amp
-    iHTCa																			:amp
-    iHTCb																			:amp
-    iRTCa																			:amp
-    iRTCb																			:amp
-    iIN																				:amp
-    iRE																				:amp
-    iPYa																			:amp
-    iPYb																			:amp
-    iRND																			:amp
-    iGLUT = iHTCa + iHTCb + iRTCa + iRTCb + iPYa + iPYb + iRND						:amp 
-    iGABA = iIN + iRE																:amp
-    iSyn = (igj + igjHR + iGLUT + iGABA)/n_Stim										:amp/meter**2
+    igj                                                                                         :amp
+    igjHR                                                                                       :amp
+    iHTCa                                                                                       :amp
+    iHTCb                                                                                       :amp
+    iRTCa                                                                                       :amp
+    iRTCb                                                                                       :amp
+    iIN                                                                                         :amp
+    iRE                                                                                         :amp
+    iPYa                                                                                        :amp
+    iPYb                                                                                        :amp
+    iRND                                                                                        :amp
+    iGLUT = iHTCa + iHTCb + iRTCa + iRTCb + iPYa + iPYb + iRND                                  :amp
+    iGABA = iIN + iRE                                                                           :amp
+    iSyn = (igj + igjHR + iGLUT + iGABA)/n_Stim                                                 :amp/meter**2
     '''
 
     #Location equations
     loc = '''
-    x 																				:1
-    y 																				:1
-    gjb																				:1
+    x                                                                                           :1
+    y                                                                                           :1
+    gjb                                                                                         :1
     '''
 
     #Main Izhikevich Equation, PY FS
     main_PY_FS = '''
-    dv/dt = (k*(v - vr)*(v - vt) - u - iSyn + iStm + sg*Sgn(t))/Cm					:volt
-    Cm																				:farad
-    k																				:siemens/volt
-    vt																				:volt
-    vr																				:volt
-    du/dt = a*(b*((v - vr)/mV)**un*(v > vb) - u)									:amp
-    a 																				:Hz
-    b 																				:amp
-    vb																				:volt
-    un																				:1
-    vth																				:volt
-    c 																				:volt
-    d 																				:amp
-    sg																				:1
-    iRTCa																			:amp
-    iPY																				:amp
-    iPYL																				:amp
-    iPYR																				:amp
-    iFS																				:amp
-    iFSL																				:amp
-    iFSR																				:amp
-    iRND																			:amp
-    iStm																			:amp
-    iSyn = iRTCa + iPY + iFS + iRND													:amp
-    LFP = abs(iRTCa + iPY) + abs(iFS)												:amp
+    dv/dt = (k*(v - vr)*(v - vt) - u - iSyn + iStm + sg*Sgn(t))/Cm                              :volt
+    Cm                                                                                          :farad
+    k                                                                                           :siemens/volt
+    vt                                                                                          :volt
+    vr                                                                                          :volt
+    du/dt = a*(b*((v - vr)/mV)**un*(v > vb) - u)                                                :amp
+    a                                                                                           :Hz
+    b                                                                                           :amp
+    vb                                                                                          :volt
+    un                                                                                          :1
+    vth                                                                                         :volt
+    c                                                                                           :volt
+    d                                                                                           :amp
+    sg                                                                                          :1
+    iRTCa                                                                                       :amp
+    iPY                                                                                         :amp
+    iPYL                                                                                        :amp
+    iPYR                                                                                        :amp
+    iFS                                                                                         :amp
+    iFSL                                                                                        :amp
+    iFSR                                                                                        :amp
+    iRND                                                                                        :amp
+    iStm                                                                                        :amp
+    iSyn = iRTCa + iPY + iFS + iRND                                                             :amp
+    LFP = abs(iRTCa + iPY) + abs(iFS)                                                           :amp
     '''
 
     #Cell Group Declarations
@@ -304,7 +304,7 @@ def main():
     HTCLg.g_Ca = 3*mS/cm**2
     HTCLg.g_Cal = 0.5*mS/cm**2
     HTCLg.v_SH = -30*mV
-    HTCLg.g_AHP = 0.3*mS/cm**2 
+    HTCLg.g_AHP = 0.3*mS/cm**2
     HTCLg.g_Can = 0.5*mS/cm**2
     HTCLg.x = 'i%nHTC'
     HTCLg.y = '(i - x)/nHTC'
@@ -315,7 +315,7 @@ def main():
     HTCRg.g_Ca = 3*mS/cm**2
     HTCRg.g_Cal = 0.5*mS/cm**2
     HTCRg.v_SH = -30*mV
-    HTCRg.g_AHP = 0.3*mS/cm**2 
+    HTCRg.g_AHP = 0.3*mS/cm**2
     HTCRg.g_Can = 0.5*mS/cm**2
     HTCRg.x = 'i%nHTC'
     HTCRg.y = '(i - x)/nHTC'
@@ -326,7 +326,7 @@ def main():
     RTCLg.g_Ca = 0.6*mS/cm**2
     RTCLg.g_Cal = 0.3*mS/cm**2
     RTCLg.v_SH = -40*mV
-    RTCLg.g_AHP = 0.1*mS/cm**2 
+    RTCLg.g_AHP = 0.1*mS/cm**2
     RTCLg.g_Can = 0.6*mS/cm**2
     RTCLg.x = 'i%nRTC'
     RTCLg.y = '(i - x)/nRTC'
@@ -355,8 +355,8 @@ def main():
     INLg.g_Ca = 2.5*mS/cm**2
     INLg.v_SH = -30*mV
     INLg.tm  = 0.25
-    INLg.g_H = 0.05*mS/cm**2 
-    INLg.g_AHP = 0.2*mS/cm**2 
+    INLg.g_H = 0.05*mS/cm**2
+    INLg.g_AHP = 0.2*mS/cm**2
     INLg.g_Can = 0.1*mS/cm**2
     INLg.n_Stim = 1.7e-4*cm**2
     left.append(INLg)
@@ -371,8 +371,8 @@ def main():
     INRg.g_Ca = 2.5*mS/cm**2
     INRg.v_SH = -30*mV
     INRg.tm  = 0.25
-    INRg.g_H = 0.05*mS/cm**2 
-    INRg.g_AHP = 0.2*mS/cm**2 
+    INRg.g_H = 0.05*mS/cm**2
+    INRg.g_AHP = 0.2*mS/cm**2
     INRg.g_Can = 0.1*mS/cm**2
     INRg.n_Stim = 1.7e-4*cm**2
     right.append(INRg)
@@ -386,7 +386,7 @@ def main():
     RELg.tau_Ca = 100*ms
     RELg.v_SH = -40*mV
     RELg.tm  = 1
-    RELg.g_AHP = 0.2*mS/cm**2 
+    RELg.g_AHP = 0.2*mS/cm**2
     RELg.g_Can = 0.2*mS/cm**2
     RELg.n_Stim = 1.45e-4*cm**2
     RELg.x = 'i%nRE'
@@ -403,7 +403,7 @@ def main():
     RERg.tau_Ca = 100*ms
     RERg.v_SH = -40*mV
     RERg.tm  = 1
-    RERg.g_AHP = 0.2*mS/cm**2 
+    RERg.g_AHP = 0.2*mS/cm**2
     RERg.g_Can = 0.2*mS/cm**2
     RERg.n_Stim = 1.45e-4*cm**2
     RERg.x = 'i%nRE'
@@ -429,16 +429,16 @@ def main():
     PYLg = PYFSLg[:nPY]
     PYLg.Cm = (100 + 0.1*randn(nPY))*pF
     PYLg.k = 0.7*pA/(mvolt*mvolt)
-    PYLg.vr = vr = -60*mV + .1*randn(nPY)*mV
+    PYLg.vr = -60*mV + .1*randn(nPY)*mV
     PYLg.vt = -40*mV + .1*randn(nPY)*mV
     PYLg.a = (0.03 + 0.001*randn(nPY))*kHz
-    PYLg.b = b =  (-2 + 0.01*randn(nPY))*pA
+    PYLg.b = (-2 + 0.01*randn(nPY))*pA
     PYLg.vb = -200*volt
     PYLg.un = 1
     PYLg.vth = 35*mV + .1*randn(nPY)*mV
     PYLg.c = -50*mV + 0.1*randn(nPY)*mV
     PYLg.d = (100 + 0.1*randn(nPY))*pA
-    PYLg.v = v = -60*mV + .1*randn(nPY)*mV
+    PYLg.v -60*mV + .1*randn(nPY)*mV
     PYLg.u = PYLg.b*(PYLg.v-PYLg.vr)/mV
     PYLg.iStm = 79*pA
     PYLg.sg = 1
@@ -507,16 +507,16 @@ def main():
 
     #Declare Initial Conditions Thalamus Cells
     #Global Variables
-    ca0 = 5e-5*mM 								
+    ca0 = 5e-5*mM
     v0 = -60*mV
 
     #iCa, HTC, RTC, IN
-    m00 = 1/(1+exp(-(v0+34*mV)/(6.2*mV))) 
+    m00 = 1/(1+exp(-(v0+34*mV)/(6.2*mV)))
     h00 = 1/(1+exp((v0+58*mV)/(4*mV)))
 
     #iCa, RE
-    m00_RE = 1/(1+exp(-(v0+55*mV)/(7.4*mV))) 																										
-    h00_RE = 1/(1+exp((v0+83*mV)/(5*mV)))												
+    m00_RE = 1/(1+exp(-(v0+55*mV)/(7.4*mV)))
+    h00_RE = 1/(1+exp((v0+83*mV)/(5*mV)))
 
     #iCat HTC, RTC
     m10 = 1/(1+exp(-(v0+62*mV)/(6.2*mV)))
@@ -585,36 +585,36 @@ def main():
     #Modular Synapse Equations, Biophysical
     #Gap Junction
     GJ = '''
-    rgap 										 									:ohm
-    iGJ = (v_post - v_pre)/rgap														:amp
+    rgap                                                                                        :ohm
+    iGJ = (v_post - v_pre)/rgap                                                                 :amp
     '''
 
     #Chemical Synapse, GABA_A, AMPA
     CSa = '''
-    D_i 																			:1
-    t_spike																			:second
-    g_syn 																			:siemens
-    e_syn																			:volt
-    alpha 																			:Hz
-    beta 																			:Hz
-    T = 0.5*(t-t_spike < 2.3*ms)*(t-t_spike > 2*ms)*(t_spike > 0*ms)				:1
-    D = 1 - (1 - D_i*(1 - 0.07))*exp(-(t - t_spike)/700/ms)							:1
-    ds/dt = T*alpha*(1-s) - beta*s 													:1 (clock-driven)
-    iCS = D*g_syn*s*(v_post - e_syn)												:amp
+    D_i                                                                                         :1
+    t_spike                                                                                     :second
+    g_syn                                                                                       :siemens
+    e_syn                                                                                       :volt
+    alpha                                                                                       :Hz
+    beta                                                                                        :Hz
+    T = 0.5*(t-t_spike < 2.3*ms)*(t-t_spike > 2*ms)*(t_spike > 0*ms)                            :1
+    D = 1 - (1 - D_i*(1 - 0.07))*exp(-(t - t_spike)/700/ms)                                     :1
+    ds/dt = T*alpha*(1-s) - beta*s                                                              :1 (clock-driven)
+    iCS = D*g_syn*s*(v_post - e_syn)                                                            :amp
     '''
 
     #Chemical Synapse, NMDA
     CSb = '''
-    D_i 																			:1
-    t_spike																			:second
-    g_syn 																			:siemens
-    alpha 																			:Hz
-    beta 																			:Hz
-    T = 0.5*(t-t_spike < 2.3*ms)*(t-t_spike > 2*ms)*(t_spike > 0*ms)				:1
-    ds/dt = T*alpha*(1-s) - beta*s 													:1 (clock-driven)
-    D = 1 - (1 - D_i*(1 - 0.07))*exp(-(t - t_spike)/700/ms)							:1
-    B = 1/(1+exp(-(v_post + 25*mV)/12.5/mV))										:1
-    iCS = D*B*g_syn*s*v_post														:amp
+    D_i                                                                                         :1
+    t_spike                                                                                     :second
+    g_syn                                                                                       :siemens
+    alpha                                                                                       :Hz
+    beta                                                                                        :Hz
+    T = 0.5*(t-t_spike < 2.3*ms)*(t-t_spike > 2*ms)*(t_spike > 0*ms)                            :1
+    ds/dt = T*alpha*(1-s) - beta*s                                                              :1 (clock-driven)
+    D = 1 - (1 - D_i*(1 - 0.07))*exp(-(t - t_spike)/700/ms)                                     :1
+    B = 1/(1+exp(-(v_post + 25*mV)/12.5/mV))                                                    :1
+    iCS = D*B*g_syn*s*v_post                                                                    :amp
     '''
 
     preCS = '''
@@ -624,12 +624,12 @@ def main():
 
     #Random Spiking Synapse, HTC, RTC, IN, RE
     iRND = '''
-    tau 																			:second
-    t_spike																			:second
-    g_spike																			:siemens
-    d 																				:1
-    g																				:siemens
-    iRND_post = g*v_post															:amp (summed)
+    tau                                                                                         :second
+    t_spike                                                                                     :second
+    g_spike                                                                                     :siemens
+    d                                                                                           :1
+    g                                                                                           :siemens
+    iRND_post = g*v_post                                                                        :amp (summed)
     '''
     preRND = '''
     d = (rand() < 0.003)*(t-t_spike > 3*ms)
@@ -639,44 +639,44 @@ def main():
 
     #->Thalamus Equation Expressions
     igj_eqs = '''
-    igj_post = iGJ																	:amp (summed)
+    igj_post = iGJ                                                                              :amp (summed)
     '''
     igjHR_eqs = '''
-    igjHR_post = iGJ																:amp (summed)
+    igjHR_post = iGJ                                                                            :amp (summed)
     '''
     iHTCa_eqs = '''
-    iHTCa_post = iCS																:amp (summed)
+    iHTCa_post = iCS                                                                            :amp (summed)
     '''
     iHTCb_eqs = '''
-    iHTCb_post = iCS																:amp (summed)
+    iHTCb_post = iCS                                                                            :amp (summed)
     '''
     iRTCa_eqs = '''
-    iRTCa_post = iCS																:amp (summed)
+    iRTCa_post = iCS                                                                            :amp (summed)
     '''
     iRTCb_eqs = '''
-    iRTCb_post = iCS																:amp (summed)
+    iRTCb_post = iCS                                                                            :amp (summed)
     '''
     iIN_eqs = '''
-    iIN_post = iCS																	:amp (summed)
+    iIN_post = iCS                                                                              :amp (summed)
     '''
     iRE_eqs = '''
-    iRE_post = iCS																	:amp (summed)
+    iRE_post = iCS                                                                              :amp (summed)
     '''
     iPYa_eqs = '''
-    iPYa_post = iCS																	:amp (summed)
+    iPYa_post = iCS                                                                             :amp (summed)
     '''
     iPYb_eqs = '''
-    iPYb_post = iCS																	:amp (summed)
+    iPYb_post = iCS                                                                             :amp (summed)
     '''
 
     #Modular Synapse Equations, Izhikevich
     #Chemical Synapse, GABA_A, AMDA
     PYFS_cs = '''
-    tau 																			:second 
-    e_syn																			:volt
-    g_spike																			:siemens
-    dg/dt = -g/tau																	:siemens (clock-driven)
-    iCS = g*(v_post - e_syn)														:amp
+    tau                                                                                         :second
+    e_syn                                                                                       :volt
+    g_spike                                                                                     :siemens
+    dg/dt = -g/tau                                                                              :siemens (clock-driven)
+    iCS = g*(v_post - e_syn)                                                                    :amp
     '''
     prePYFS = '''
     g += g_spike
@@ -684,10 +684,10 @@ def main():
 
     #Random Spiking Synapse, PY, FS
     RND_PYFS = '''
-    std 																			:amp
-    t_spike																			:second
-    randi																			:1
-    iRND_post = std*randi															:amp(summed)
+    std                                                                                         :amp
+    t_spike                                                                                     :second
+    randi                                                                                       :1
+    iRND_post = std*randi                                                                       :amp(summed)
     '''
     preRND_PYFS = '''
     randi = randi*(t-t_spike<0.5*ms)+randn()*(1-(t-t_spike<0.5*ms))
@@ -696,23 +696,23 @@ def main():
 
     #->PYFS Equation Expressions
     iPY_eqs = '''
-    iPY_post = iCS																	:amp (summed)
+    iPY_post = iCS                                                                              :amp (summed)
     '''
     iPYL_eqs = '''
-    iPYL_post = iCS																	:amp (summed)
+    iPYL_post = iCS                                                                             :amp (summed)
     '''
     iPYR_eqs = '''
-    iPYR_post = iCS																	:amp (summed)
+    iPYR_post = iCS                                                                             :amp (summed)
     '''
 
     iFS_eqs = '''
-    iFS_post = iCS																	:amp (summed)
+    iFS_post = iCS                                                                              :amp (summed)
     '''
     iFSL_eqs = '''
-    iFSL_post = iCS																	:amp (summed)
+    iFSL_post = iCS                                                                             :amp (summed)
     '''
     iFSR_eqs = '''
-    iFSR_post = iCS																	:amp (summed)
+    iFSR_post = iCS                                                                             :amp (summed)
     '''
     #Synapse Group Declarations
 
@@ -791,26 +791,26 @@ def main():
     #->FSL Synapses
     FSL_RTCL_cs = Synapses(RTCLg,FSLg,(PYFS_cs + iRTCa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
     FSL_PYL_cs = Synapses(PYLg,FSLg,(PYFS_cs + iPY_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    FSL_FSL_cs = Synapses(FSLg,FSLg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step) 
+    FSL_FSL_cs = Synapses(FSLg,FSLg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
     FSL_RND = Synapses(RNDg,FSLg,RND_PYFS,on_pre = preRND_PYFS, method = 'rk4', dt = t_step)
     FSL_RND = Synapses(RNDg,FSLg,RND_PYFS,on_pre = preRND_PYFS, method = 'rk4', dt = t_step)
     #->FSR Synapses
     FSR_RTCR_cs = Synapses(RTCRg,FSRg,(PYFS_cs + iRTCa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
     FSR_PYR_cs = Synapses(PYRg,FSRg,(PYFS_cs + iPY_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    FSR_FSR_cs = Synapses(FSRg,FSRg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step) 
+    FSR_FSR_cs = Synapses(FSRg,FSRg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
     FSR_RND = Synapses(RNDg,FSRg,RND_PYFS,on_pre = preRND_PYFS, method = 'rk4', dt = t_step)
     FSR_RND = Synapses(RNDg,FSRg,RND_PYFS,on_pre = preRND_PYFS, method = 'rk4', dt = t_step)
     #Declare Connections
 
     #->HTCL
     HTCL_HTCL_gj.connect('(x_pre - x_post)**2+(y_pre-y_post)**2 < 4.01*(i < j)' , p = '0.3')
-    HTCL_HTCL_gj.connect(i = HTCL_HTCL_gj.j[:], j = HTCL_HTCL_gj.i[:]) 
+    HTCL_HTCL_gj.connect(i = HTCL_HTCL_gj.j[:], j = HTCL_HTCL_gj.i[:])
     HTCL_RTCL_gj.connect('(x_pre*(nHTC-1.0)/(nRTC-1.0)-x_post)**2+(y_pre*(nHTC-1.0)/(nRTC-1.0)-y_post)**2 < 4.01*gjb_pre', p = '0.3')
     HTCL_REL_cs.connect(p = '0.2')
     HTCL_RND_cs.connect()
     #->HTCR
     HTCR_HTCR_gj.connect('(x_pre - x_post)**2+(y_pre-y_post)**2 < 4.01*(i < j)' , p = '0.3')
-    HTCR_HTCR_gj.connect(i = HTCR_HTCR_gj.j[:], j = HTCR_HTCR_gj.i[:]) 
+    HTCR_HTCR_gj.connect(i = HTCR_HTCR_gj.j[:], j = HTCR_HTCR_gj.i[:])
     HTCR_RTCR_gj.connect('(x_pre*(nHTC-1.0)/(nRTC-1.0)-x_post)**2+(y_pre*(nHTC-1.0)/(nRTC-1.0)-y_post)**2 < 4.01*gjb_pre', p = '0.3')
     HTCR_RER_cs.connect(p = '0.2')
     HTCR_RND_cs.connect()
@@ -843,7 +843,7 @@ def main():
 
     #->REL
     REL_REL_gj.connect('(x_pre - x_post)**2+(y_pre-y_post )**2 < 4.01*(gjb_pre*i < gjb_post*j)', p = '0.3')
-    REL_REL_gj.connect(i = REL_REL_gj.j[:], j = REL_REL_gj.i[:]) 
+    REL_REL_gj.connect(i = REL_REL_gj.j[:], j = REL_REL_gj.i[:])
     REL_HTCL_csa.connect(p = '0.2')
     REL_HTCL_csb.connect(i = REL_HTCL_csa.i[:], j = REL_HTCL_csa.j[:])
     REL_RTCL_csa.connect(p = '0.2')
@@ -854,7 +854,7 @@ def main():
     REL_RND_cs.connect()
     #->RER
     RER_RER_gj.connect('(x_pre - x_post)**2+(y_pre-y_post )**2 < 4.01*(gjb_pre*i < gjb_post*j)', p = '0.3')
-    RER_RER_gj.connect(i = RER_RER_gj.j[:], j = RER_RER_gj.i[:]) 
+    RER_RER_gj.connect(i = RER_RER_gj.j[:], j = RER_RER_gj.i[:])
     RER_HTCR_csa.connect(p = '0.2')
     RER_HTCR_csb.connect(i = RER_HTCR_csa.i[:], j = RER_HTCR_csa.j[:])
     RER_RTCR_csa.connect(p = '0.2')
@@ -973,7 +973,7 @@ def main():
     INL_REL_cs.D_i = 1.07
     INL_REL_cs.g_syn = 1*nS
     INL_REL_cs.e_syn = -80*mV
-    INL_REL_cs.alpha = 10.5/ms 
+    INL_REL_cs.alpha = 10.5/ms
     INL_REL_cs.beta = 0.166/ms
     INL_RND_cs.t_spike = -3*ms
     INL_RND_cs.g_spike = 1.5*nS
@@ -1017,7 +1017,7 @@ def main():
     REL_RTCL_csb.g_syn = 2*nS
     REL_RTCL_csb.alpha = 1/ms
     REL_RTCL_csb.beta = 0.0067/ms
-    REL_REL_cs.D_i = 1.07 
+    REL_REL_cs.D_i = 1.07
     REL_REL_cs.g_syn = 1*nS
     REL_REL_cs.e_syn = -70*mV
     REL_REL_cs.alpha = 10.5/ms
@@ -1041,7 +1041,7 @@ def main():
     RER_HTCR_csa.e_syn = 0*mV
     RER_HTCR_csa.alpha = 0.94/ms
     RER_HTCR_csa.beta = 0.18/ms
-    RER_HTCR_csb.D_i = 1.07 
+    RER_HTCR_csb.D_i = 1.07
     RER_HTCR_csb.g_syn = 2*nS
     RER_HTCR_csb.alpha = 1/ms
     RER_HTCR_csb.beta = 0.0067/ms
@@ -1054,7 +1054,7 @@ def main():
     RER_RTCR_csb.g_syn = 2*nS
     RER_RTCR_csb.alpha = 1/ms
     RER_RTCR_csb.beta = 0.0067/ms
-    RER_RER_cs.D_i = 1.07 
+    RER_RER_cs.D_i = 1.07
     RER_RER_cs.g_syn = 1*nS
     RER_RER_cs.e_syn = -70*mV
     RER_RER_cs.alpha = 10.5/ms
@@ -1164,6 +1164,9 @@ def main():
     FSL_PYR_cs.tau = 2*ms
     FSL_PYR_cs.e_syn = 0*mV
     FSL_PYR_cs.g_spike = 0.4*nS
+
+
+
 #------------------------------------------------------------------
 
 
