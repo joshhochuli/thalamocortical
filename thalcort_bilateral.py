@@ -3,7 +3,7 @@ from brian2 import *
 def main():
     seed(555)
 
-    #prefs.codegen.target = 'numpy'
+    prefs.codegen.target = 'numpy'
     BrianLogger.log_level_debug()
 
     left = []
@@ -219,14 +219,20 @@ def main():
     igjHR                                                                                       :amp
     iHTCa                                                                                       :amp
     iHTCb                                                                                       :amp
-    iRTCa                                                                                       :amp
-    iRTCb                                                                                       :amp
+    iRTCLa                                                                                       :amp
+    iRTCRa                                                                                       :amp
+    iRTCLb                                                                                       :amp
+    iRTCRb                                                                                       :amp
     iIN                                                                                         :amp
     iRE                                                                                         :amp
     iPYa                                                                                        :amp
+    iPYLa                                                                                       :amp
+    iPYRa                                                                                       :amp
     iPYb                                                                                        :amp
+    iPYLb                                                                                       :amp
+    iPYRb                                                                                       :amp
     iRND                                                                                        :amp
-    iGLUT = iHTCa + iHTCb + iRTCa + iRTCb + iPYa + iPYb + iRND                                  :amp
+    iGLUT = iHTCa + iHTCb + iRTCLa + iRTCLb + iRTCRa + iRTCRb + iPYLa + iPYRb + iRND              :amp
     iGABA = iIN + iRE                                                                           :amp
     iSyn = (igj + igjHR + iGLUT + iGABA)/n_Stim                                                 :amp/meter**2
     '''
@@ -255,7 +261,8 @@ def main():
     d                                                                                           :amp
     sg                                                                                          :1
     iRTCa                                                                                       :amp
-    iPY                                                                                         :amp
+    iRTCLa                                                                                      :amp
+    iRTCRa                                                                                      :amp
     iPYL                                                                                        :amp
     iPYR                                                                                        :amp
     iFS                                                                                         :amp
@@ -263,8 +270,8 @@ def main():
     iFSR                                                                                        :amp
     iRND                                                                                        :amp
     iStm                                                                                        :amp
-    iSyn = iRTCa + iPY + iFS + iRND                                                             :amp
-    LFP = abs(iRTCa + iPY) + abs(iFS)                                                           :amp
+    iSyn = iRTCa + iPYL + iPYR + iFS + iRND                                                     :amp
+    LFP = abs(iRTCa + iPYL + iPYR) + abs(iFS)                                                   :amp
     '''
 
     #Cell Group Declarations
@@ -412,21 +419,35 @@ def main():
     right.append(RERg)
 
     #Declare PY FS Groups
-    PYFSLg = NeuronGroup(nPY+nFS, main_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
+    FSLg = NeuronGroup(nFS, main_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
     v = c
     u += d
-    ''', name = "PYFSLg")
-    left.append(PYFSLg)
+    ''', name = "FSLg")
+    left.append(FSLg)
 
-    PYFSRg = NeuronGroup(nPY+nFS, main_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
+    PYLg = NeuronGroup(nPY, main_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
     v = c
     u += d
-    ''')
-    right.append(PYFSLg)
+    ''', name = "PYLg")
+    left.append(PYLg)
+
+
+    FSRg = NeuronGroup(nFS, main_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
+    v = c
+    u += d
+    ''', name = "FSRg")
+    right.append(FSRg)
+
+    PYRg = NeuronGroup(nPY, main_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
+    v = c
+    u += d
+    ''', name = "PYRg")
+    right.append(PYRg)
+
 
 
     #PYL Group Declaration
-    PYLg = PYFSLg[:nPY]
+    #PYLg = PYFSLg[:nPY]
     PYLg.Cm = (100 + 0.1*randn(nPY))*pF
     PYLg.k = 0.7*pA/(mvolt*mvolt)
     PYLg.vr = -60*mV + .1*randn(nPY)*mV
@@ -445,7 +466,7 @@ def main():
     left.append(PYLg)
 
     #PYR Group Declaration
-    PYRg = PYFSRg[:nPY]
+    #PYRg = PYFSRg[:nPY]
     PYRg.Cm = (100 + 0.1*randn(nPY))*pF
     PYRg.k = 0.7*pA/(mvolt*mvolt)
     PYRg.vr = -60*mV + .1*randn(nPY)*mV
@@ -465,7 +486,7 @@ def main():
 
 
     #FS Group Declaration
-    FSLg = PYFSLg[nPY:]
+    #FSLg = PYFSLg[nPY:]
     FSLg.Cm = (20 + 0.1*randn(nFS))*pF
     FSLg.k = (1 + 0.01*randn(nFS))*pA/(mvolt*mvolt)
     FSLg.vr = -55*mV + 0.1*randn(nFS)*mV
@@ -483,7 +504,7 @@ def main():
     left.append(FSLg)
 
     #FS Group Declaration
-    FSRg = PYFSRg[nPY:]
+    #FSRg = PYFSRg[nPY:]
     FSRg.Cm = (20 + 0.1*randn(nFS))*pF
     FSRg.k = (1 + 0.01*randn(nFS))*pA/(mvolt*mvolt)
     FSRg.vr = -55*mV + 0.1*randn(nFS)*mV
@@ -501,7 +522,8 @@ def main():
     right.append(FSRg)
 
     #Constant Spiking Neuron for Noise
-    RNDg = NeuronGroup(1, model = ' v = 0 :1', method = 'rk4', dt = t_step, threshold = 'v < 1')
+    RNDg = NeuronGroup(1, model = ' v = 0 :1', method = 'rk4', dt = t_step,
+            threshold = 'v < 1', name = "RNDg")
     other.append(RNDg)
 
 
@@ -650,23 +672,43 @@ def main():
     iHTCb_eqs = '''
     iHTCb_post = iCS                                                                            :amp (summed)
     '''
-    iRTCa_eqs = '''
-    iRTCa_post = iCS                                                                            :amp (summed)
+
+    iRTCLa_eqs = '''
+    iRTCLa_post = iCS                                                                            :amp (summed)
     '''
-    iRTCb_eqs = '''
-    iRTCb_post = iCS                                                                            :amp (summed)
+    iRTCLb_eqs = '''
+    iRTCLb_post = iCS                                                                            :amp (summed)
     '''
+
+    iRTCRa_eqs = '''
+    iRTCRa_post = iCS                                                                            :amp (summed)
+    '''
+    iRTCRb_eqs = '''
+    iRTCRb_post = iCS                                                                            :amp (summed)
+    '''
+
     iIN_eqs = '''
     iIN_post = iCS                                                                              :amp (summed)
     '''
     iRE_eqs = '''
     iRE_post = iCS                                                                              :amp (summed)
     '''
-    iPYa_eqs = '''
-    iPYa_post = iCS                                                                             :amp (summed)
+
+    iPYLa_eqs = '''
+    iPYLa_post = iCS                                                                             :amp (summed)
     '''
-    iPYb_eqs = '''
-    iPYb_post = iCS                                                                             :amp (summed)
+
+    iPYRa_eqs = '''
+    iPYRa_post = iCS                                                                             :amp (summed)
+    '''
+
+
+    iPYLb_eqs = '''
+    iPYLb_post = iCS                                                                             :amp (summed)
+    '''
+
+    iPYRb_eqs = '''
+    iPYRb_post = iCS                                                                             :amp (summed)
     '''
 
     #Modular Synapse Equations, Izhikevich
@@ -695,12 +737,10 @@ def main():
     '''
 
     #->PYFS Equation Expressions
-    iPY_eqs = '''
-    iPY_post = iCS                                                                              :amp (summed)
-    '''
     iPYL_eqs = '''
     iPYL_post = iCS                                                                             :amp (summed)
     '''
+
     iPYR_eqs = '''
     iPYR_post = iCS                                                                             :amp (summed)
     '''
@@ -734,15 +774,15 @@ def main():
     RTCL_HTCL_gj = Synapses(HTCLg,RTCLg,(GJ + igjHR_eqs))
     RTCL_INL_cs = Synapses(INLg,RTCLg,(CSa + iIN_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
     RTCL_REL_cs = Synapses(RELg,RTCLg,(CSa + iRE_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    RTCL_PYL_csa = Synapses(PYLg, RTCLg, (CSa + iPYa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
-    RTCL_PYL_csb = Synapses(PYLg, RTCLg, (CSb + iPYb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RTCL_PYL_csa = Synapses(PYLg, RTCLg, (CSa + iPYLa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RTCL_PYL_csb = Synapses(PYLg, RTCLg, (CSb + iPYLb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
     RTCL_RND_cs = Synapses(RNDg, RTCLg, iRND, on_pre = preRND, method = 'rk4', dt = t_step)
     #->RTCR Synapses
     RTCR_HTCR_gj = Synapses(HTCRg,RTCRg,(GJ + igjHR_eqs))
     RTCR_INR_cs = Synapses(INRg,RTCRg,(CSa + iIN_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
     RTCR_RER_cs = Synapses(RERg,RTCRg,(CSa + iRE_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    RTCR_PYR_csa = Synapses(PYRg, RTCRg, (CSa + iPYa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
-    RTCR_PYR_csb = Synapses(PYRg, RTCRg, (CSb + iPYb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RTCR_PYR_csa = Synapses(PYRg, RTCRg, (CSa + iPYRa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RTCR_PYR_csb = Synapses(PYRg, RTCRg, (CSb + iPYRb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
     RTCR_RND_cs = Synapses(RNDg, RTCRg, iRND, on_pre = preRND, method = 'rk4', dt = t_step)
 
     #->INL Synapses
@@ -760,43 +800,43 @@ def main():
     REL_REL_gj = Synapses(RELg,RELg,(GJ + igj_eqs))
     REL_HTCL_csa = Synapses(HTCLg,RELg,(CSa + iHTCa_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
     REL_HTCL_csb = Synapses(HTCLg,RELg,(CSb + iHTCb_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    REL_RTCL_csa = Synapses(RTCLg,RELg,(CSa + iRTCa_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    REL_RTCL_csb = Synapses(RTCLg,RELg,(CSb + iRTCb_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
+    REL_RTCL_csa = Synapses(RTCLg,RELg,(CSa + iRTCLa_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
+    REL_RTCL_csb = Synapses(RTCLg,RELg,(CSb + iRTCLb_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
     REL_REL_cs = Synapses(RELg,RELg,(CSa + iRE_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    REL_PYL_csa = Synapses(PYLg, RELg, (CSa + iPYa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
-    REL_PYL_csb = Synapses(PYLg, RELg, (CSb + iPYb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    REL_PYL_csa = Synapses(PYLg, RELg, (CSa + iPYLa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    REL_PYL_csb = Synapses(PYLg, RELg, (CSb + iPYLb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
     REL_RND_cs = Synapses(RNDg, RELg, iRND, on_pre = preRND, method = 'rk4', dt = t_step)
     #->RER Synapses
     RER_RER_gj = Synapses(RERg,RERg,(GJ + igj_eqs))
     RER_HTCR_csa = Synapses(HTCRg,RERg,(CSa + iHTCa_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
     RER_HTCR_csb = Synapses(HTCRg,RERg,(CSb + iHTCb_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    RER_RTCR_csa = Synapses(RTCRg,RERg,(CSa + iRTCa_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    RER_RTCR_csb = Synapses(RTCRg,RERg,(CSb + iRTCb_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
+    RER_RTCR_csa = Synapses(RTCRg,RERg,(CSa + iRTCRa_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
+    RER_RTCR_csb = Synapses(RTCRg,RERg,(CSb + iRTCRb_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
     RER_RER_cs = Synapses(RERg,RERg,(CSa + iRE_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    RER_PYR_csa = Synapses(PYRg, RERg, (CSa + iPYa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
-    RER_PYR_csb = Synapses(PYRg, RERg, (CSb + iPYb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RER_PYR_csa = Synapses(PYRg, RERg, (CSa + iPYRa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RER_PYR_csb = Synapses(PYRg, RERg, (CSb + iPYRb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
     RER_RND_cs = Synapses(RNDg, RERg, iRND, on_pre = preRND, method = 'rk4', dt = t_step)
 
     #->PYL Synapses
-    PYL_RTCL_cs = Synapses(RTCLg,PYLg,(PYFS_cs + iRTCa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    PYL_PYL_cs = Synapses(PYLg,PYLg,(PYFS_cs + iPY_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    PYL_RTCL_cs = Synapses(RTCLg,PYLg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    PYL_PYL_cs = Synapses(PYLg,PYLg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
     PYL_FSL_cs = Synapses(FSLg,PYLg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
     PYL_RND = Synapses(RNDg,PYLg,RND_PYFS,on_pre = preRND_PYFS, method = 'rk4', dt = t_step)
     #->PY Synapses
-    PYR_RTCR_cs = Synapses(RTCRg,PYRg,(PYFS_cs + iRTCa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    PYR_PYR_cs = Synapses(PYRg,PYRg,(PYFS_cs + iPY_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    PYR_RTCR_cs = Synapses(RTCRg,PYRg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    PYR_PYR_cs = Synapses(PYRg,PYRg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
     PYR_FSR_cs = Synapses(FSRg,PYRg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
     PYR_RND = Synapses(RNDg,PYRg,RND_PYFS,on_pre = preRND_PYFS, method = 'rk4', dt = t_step)
 
     #->FSL Synapses
-    FSL_RTCL_cs = Synapses(RTCLg,FSLg,(PYFS_cs + iRTCa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    FSL_PYL_cs = Synapses(PYLg,FSLg,(PYFS_cs + iPY_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    FSL_RTCL_cs = Synapses(RTCLg,FSLg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    FSL_PYL_cs = Synapses(PYLg,FSLg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
     FSL_FSL_cs = Synapses(FSLg,FSLg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
     FSL_RND = Synapses(RNDg,FSLg,RND_PYFS,on_pre = preRND_PYFS, method = 'rk4', dt = t_step)
     FSL_RND = Synapses(RNDg,FSLg,RND_PYFS,on_pre = preRND_PYFS, method = 'rk4', dt = t_step)
     #->FSR Synapses
-    FSR_RTCR_cs = Synapses(RTCRg,FSRg,(PYFS_cs + iRTCa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    FSR_PYR_cs = Synapses(PYRg,FSRg,(PYFS_cs + iPY_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    FSR_RTCR_cs = Synapses(RTCRg,FSRg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    FSR_PYR_cs = Synapses(PYRg,FSRg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
     FSR_FSR_cs = Synapses(FSRg,FSRg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
     FSR_RND = Synapses(RNDg,FSRg,RND_PYFS,on_pre = preRND_PYFS, method = 'rk4', dt = t_step)
     FSR_RND = Synapses(RNDg,FSRg,RND_PYFS,on_pre = preRND_PYFS, method = 'rk4', dt = t_step)
@@ -1122,52 +1162,153 @@ def main():
     FSR_RND.std = 0.1*pA
     FSR_RND.randi = randn()
 
+#Cortical Crosses
 #-----------------------------------------------------------------
-    #PYL_PYR
-    PYL_PYR_cs = Synapses(PYRg,PYLg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS, method =
-            'rk4', dt = t_step, name = "PYL_PYR")
+    PYL_PYR_cs = Synapses(PYRg,PYLg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS,
+            method = 'rk4', dt = t_step, name = "PYL_PYR")
     PYL_PYR_cs.connect(p = '0.5')
     PYL_PYR_cs.tau = 2*ms
     PYL_PYR_cs.e_syn = 0*mV
     PYL_PYR_cs.g_spike = 0.3*nS
 
-    #PYR_PYL
-    PYR_PYL_cs = Synapses(PYLg,PYRg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS, method =
-            'rk4', dt = t_step, name = "PYR_PYL")
+    PYR_PYL_cs = Synapses(PYLg,PYRg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS,
+            method = 'rk4', dt = t_step, name = "PYR_PYL")
     PYR_PYL_cs.connect(p = '0.5')
     PYR_PYL_cs.tau = 2*ms
     PYR_PYL_cs.e_syn = 0*mV
     PYR_PYL_cs.g_spike = 0.3*nS
 
-
-    PYL_FSR_cs = Synapses(FSRg,PYLg,(PYFS_cs + iFSR_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    PYL_FSR_cs = Synapses(FSRg,PYLg,(PYFS_cs + iFSR_eqs),on_pre = prePYFS,
+            method = 'rk4', dt = t_step, name = "PYL_FSR")
     PYL_FSR_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p = '0.8')
     PYL_FSR_cs.tau = 10*ms
     PYL_FSR_cs.e_syn = -70*mV
     PYL_FSR_cs.g_spike = 0.3*nS
 
-    PYR_FSL_cs = Synapses(FSLg,PYRg,(PYFS_cs + iFSL_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    PYR_FSL_cs = Synapses(FSLg,PYRg,(PYFS_cs + iFSL_eqs),on_pre = prePYFS,
+            method = 'rk4', dt = t_step, name = "PYR_FSL")
     PYR_FSL_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p = '0.8')
     PYR_FSL_cs.tau = 10*ms
     PYR_FSL_cs.e_syn = -70*mV
     PYR_FSL_cs.g_spike = 0.3*nS
 
-    FSR_PYL_cs = Synapses(PYLg,FSRg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    FSR_PYL_cs = Synapses(PYLg,FSRg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS,
+            method = 'rk4', dt = t_step, name = "FSR_PYL")
     FSR_PYL_cs.connect(i = PYL_FSR_cs.j[:], j = PYL_FSR_cs.i[:])
     FSR_PYL_cs.tau = 2*ms
     FSR_PYL_cs.e_syn = 0*mV
     FSR_PYL_cs.g_spike = 0.4*nS
 
-    FSL_PYR_cs = Synapses(PYRg,FSRg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS,
+    FSL_PYR_cs = Synapses(PYRg,FSLg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS,
             method = 'rk4', dt = t_step, name = "FSL_PYR")
     FSL_PYR_cs.connect(i = PYR_FSL_cs.j[:], j = PYR_FSL_cs.i[:])
     FSL_PYR_cs.tau = 2*ms
     FSL_PYR_cs.e_syn = 0*mV
     FSL_PYR_cs.g_spike = 0.4*nS
+#------------------------------------------------------------------
 
+#Thalamic Crosses
+#None for now, seems to be pretty lateralized
+
+#Thalamocortical crosses
+#------------------------------------------------------------------
+
+    PYL_RTCR_cs = Synapses(RTCRg,PYLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    PYL_RTCR_cs.connect(p = '0.04')
+    PYL_RTCR_cs.tau = 2*ms
+    PYL_RTCR_cs.e_syn = 0*mV
+    PYL_RTCR_cs.g_spike = 0.3*nS
+
+
+    PYR_RTCL_cs = Synapses(RTCLg,PYRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    PYR_RTCL_cs.connect(p = '0.04')
+    PYR_RTCL_cs.tau = 2*ms
+    PYR_RTCL_cs.e_syn = 0*mV
+    PYR_RTCL_cs.g_spike = 0.3*nS
+
+
+
+    FSR_RTCL_cs = Synapses(RTCLg,FSRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    FSR_RTCL_cs.connect(p = '0.02')
+    FSR_RTCL_cs.tau = 2*ms
+    FSR_RTCL_cs.e_syn = 0*mV
+    FSR_RTCL_cs.g_spike = 0.4*nS
+
+
+    FSL_RTCR_cs = Synapses(RTCRg,FSLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    FSL_RTCR_cs.connect(p = '0.02')
+    FSL_RTCR_cs.tau = 2*ms
+    FSL_RTCR_cs.e_syn = 0*mV
+    FSL_RTCR_cs.g_spike = 0.4*nS
 
 
 #------------------------------------------------------------------
+
+#Corticothalamic crosses
+#------------------------------------------------------------------
+
+    RTCR_PYL_csa = Synapses(PYLg, RTCRg, (CSa + iPYLa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RTCR_PYL_csa.connect(p = '0.23')
+    RTCR_PYL_csa.D_i = 1.07
+    RTCR_PYL_csa.g_syn = 4*nS
+    RTCR_PYL_csa.e_syn = 0*mV
+    RTCR_PYL_csa.alpha = 0.94/ms
+    RTCR_PYL_csa.beta = 0.18/ms
+
+    RTCL_PYR_csa = Synapses(PYRg, RTCLg, (CSa + iPYRa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RTCL_PYR_csa.connect(p = '0.23')
+    RTCL_PYR_csa.D_i = 1.07
+    RTCL_PYR_csa.g_syn = 4*nS
+    RTCL_PYR_csa.e_syn = 0*mV
+    RTCL_PYR_csa.alpha = 0.94/ms
+    RTCL_PYR_csa.beta = 0.18/ms
+
+    RTCR_PYL_csb = Synapses(PYLg, RTCRg, (CSb + iPYLb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RTCR_PYL_csb.connect(i = RTCR_PYL_csa.i[:], j = RTCR_PYL_csa.j[:])
+    RTCR_PYL_csb.D_i = 1.07
+    RTCR_PYL_csb.g_syn = 2*nS
+    RTCR_PYL_csb.alpha = 1/ms
+    RTCR_PYL_csb.beta = 0.0067/ms
+
+    RTCL_PYR_csb = Synapses(PYRg, RTCLg, (CSb + iPYRb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RTCL_PYR_csb.connect(i = RTCL_PYR_csa.i[:], j = RTCL_PYR_csa.j[:])
+    RTCL_PYR_csb.D_i = 1.07
+    RTCL_PYR_csb.g_syn = 2*nS
+    RTCL_PYR_csb.alpha = 1/ms
+    RTCL_PYR_csb.beta = 0.0067/ms
+
+    RER_PYL_csa = Synapses(PYLg, RERg, (CSa + iPYLa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RER_PYL_csa.connect(p = '0.3')
+    RER_PYL_csa.D_i = 1.07
+    RER_PYL_csa.g_syn = 4*nS
+    RER_PYL_csa.e_syn = 0*mV
+    RER_PYL_csa.alpha = 0.94/ms
+    RER_PYL_csa.beta = 0.18/ms
+
+    REL_PYR_csa = Synapses(PYRg, RELg, (CSa + iPYRa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    REL_PYR_csa.connect(p = '0.3')
+    REL_PYR_csa.D_i = 1.07
+    REL_PYR_csa.g_syn = 4*nS
+    REL_PYR_csa.e_syn = 0*mV
+    REL_PYR_csa.alpha = 0.94/ms
+    REL_PYR_csa.beta = 0.18/ms
+
+
+    RER_PYL_csb = Synapses(PYLg, RERg, (CSb + iPYLb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RER_PYL_csb.connect(i = RER_PYL_csa.i[:], j = RER_PYL_csa.j[:])
+    RER_PYL_csb.D_i = 1.07
+    RER_PYL_csb.g_syn = 2*nS
+    RER_PYL_csb.alpha = 1/ms
+    RER_PYL_csb.beta = 0.0067/ms
+
+    REL_PYR_csb = Synapses(PYRg, RELg, (CSb + iPYRb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    REL_PYR_csb.connect(i = REL_PYR_csa.i[:], j = REL_PYR_csa.j[:])
+    REL_PYR_csb.D_i = 1.07
+    REL_PYR_csb.g_syn = 2*nS
+    REL_PYR_csb.alpha = 1/ms
+    REL_PYR_csb.beta = 0.0067/ms
+
+#-----------------------------------------------------------------
 
 
 
@@ -1182,7 +1323,7 @@ def main():
     TC_spike = SpikeMonitor(TCLg, record = True)
     IN_spike = SpikeMonitor(INLg, record = True)
     RE_spike = SpikeMonitor(RELg, record = True)
-    PYFS_spike = SpikeMonitor(PYFSLg, record = True)
+    #PYFS_spike = SpikeMonitor(PYFSLg, record = True)
 
     Sgn = TimedArray(0*sin(20*pi*t_d)*25*pA, dt = t_step)
 
