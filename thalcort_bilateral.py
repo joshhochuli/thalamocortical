@@ -225,10 +225,8 @@ def main():
     iRTCRb                                                                                       :amp
     iIN                                                                                         :amp
     iRE                                                                                         :amp
-    iPYa                                                                                        :amp
     iPYLa                                                                                       :amp
     iPYRa                                                                                       :amp
-    iPYb                                                                                        :amp
     iPYLb                                                                                       :amp
     iPYRb                                                                                       :amp
     iRND                                                                                        :amp
@@ -260,7 +258,6 @@ def main():
     c                                                                                           :volt
     d                                                                                           :amp
     sg                                                                                          :1
-    iRTCa                                                                                       :amp
     iRTCLa                                                                                      :amp
     iRTCRa                                                                                      :amp
     iPYL                                                                                        :amp
@@ -270,8 +267,8 @@ def main():
     iFSR                                                                                        :amp
     iRND                                                                                        :amp
     iStm                                                                                        :amp
-    iSyn = iRTCa + iPYL + iPYR + iFS + iRND                                                     :amp
-    LFP = abs(iRTCa + iPYL + iPYR) + abs(iFS)                                                   :amp
+    iSyn = iRTCLa + iRTCRa + iPYL + iPYR + iFS + iRND                                                     :amp
+    LFP = abs(iRTCLa + iRTCRa + iPYL + iPYR) + abs(iFS)                                                   :amp
     '''
 
     #Cell Group Declarations
