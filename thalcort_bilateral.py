@@ -219,10 +219,10 @@ def main():
     igjHR                                                                                       :amp
     iHTCa                                                                                       :amp
     iHTCb                                                                                       :amp
-    iRTCLa                                                                                       :amp
-    iRTCRa                                                                                       :amp
-    iRTCLb                                                                                       :amp
-    iRTCRb                                                                                       :amp
+    iRTCLa                                                                                      :amp
+    iRTCRa                                                                                      :amp
+    iRTCLb                                                                                      :amp
+    iRTCRb                                                                                      :amp
     iIN                                                                                         :amp
     iRE                                                                                         :amp
     iPYLa                                                                                       :amp
@@ -230,7 +230,7 @@ def main():
     iPYLb                                                                                       :amp
     iPYRb                                                                                       :amp
     iRND                                                                                        :amp
-    iGLUT = iHTCa + iHTCb + iRTCLa + iRTCLb + iRTCRa + iRTCRb + iPYLa + iPYRb + iRND              :amp
+    iGLUT = iHTCa + iHTCb + iRTCLa + iRTCLb + iRTCRa + iRTCRb + iPYLa + iPYRb + iRND            :amp
     iGABA = iIN + iRE                                                                           :amp
     iSyn = (igj + igjHR + iGLUT + iGABA)/n_Stim                                                 :amp/meter**2
     '''
@@ -267,8 +267,8 @@ def main():
     iFSR                                                                                        :amp
     iRND                                                                                        :amp
     iStm                                                                                        :amp
-    iSyn = iRTCLa + iRTCRa + iPYL + iPYR + iFS + iRND                                                     :amp
-    LFP = abs(iRTCLa + iRTCRa + iPYL + iPYR) + abs(iFS)                                                   :amp
+    iSyn = iRTCLa + iRTCRa + iPYL + iPYR + iFS + iRND                                           :amp
+    LFP = abs(iRTCLa + iRTCRa + iPYL + iPYR) + abs(iFS)                                         :amp
     '''
 
     #Cell Group Declarations
@@ -757,86 +757,140 @@ def main():
 
 
     #->HTCL Synapses
-    HTCL_HTCL_gj = Synapses(HTCLg,HTCLg,(GJ + igj_eqs))
-    HTCL_RTCL_gj = Synapses(RTCLg,HTCLg,(GJ + igjHR_eqs))
-    HTCL_REL_cs = Synapses(RELg,HTCLg,(CSa + iRE_eqs),on_pre = preCS,method = 'rk4',dt = t_step)
-    HTCL_RND_cs = Synapses(RNDg, HTCLg, iRND, on_pre = preRND, method = 'rk4', dt = t_step)
+    HTCL_HTCL_gj = Synapses(HTCLg,HTCLg,(GJ + igj_eqs), name = "HTCL_HTCL_gj")
+    HTCL_RTCL_gj = Synapses(RTCLg,HTCLg,(GJ + igjHR_eqs), name = "HTCL_RTCL_gj")
+    HTCL_REL_cs = Synapses(RELg,HTCLg,(CSa + iRE_eqs),on_pre = preCS,
+            method = 'rk4',dt = t_step, name = "HTCL_REL_cs")
+    HTCL_RND_cs = Synapses(RNDg, HTCLg, iRND, on_pre = preRND,
+            method = 'rk4', dt = t_step, name = "HTCL_RND_cs")
     #->HTCR Synapses
-    HTCR_HTCR_gj = Synapses(HTCRg,HTCRg,(GJ + igj_eqs))
-    HTCR_RTCR_gj = Synapses(RTCRg,HTCRg,(GJ + igjHR_eqs))
-    HTCR_RER_cs = Synapses(RERg,HTCRg,(CSa + iRE_eqs),on_pre = preCS,method = 'rk4',dt = t_step)
-    HTCR_RND_cs = Synapses(RNDg, HTCRg, iRND, on_pre = preRND, method = 'rk4', dt = t_step)
+    HTCR_HTCR_gj = Synapses(HTCRg,HTCRg,(GJ + igj_eqs), name = "HTCR_HTCR_gj")
+    HTCR_RTCR_gj = Synapses(RTCRg,HTCRg,(GJ + igjHR_eqs), name = "HTCR_RTCT_gj")
+    HTCR_RER_cs = Synapses(RERg,HTCRg,(CSa + iRE_eqs),on_pre = preCS,
+            method = 'rk4',dt = t_step, name = "HTCR_RER_cs")
+    HTCR_RND_cs = Synapses(RNDg, HTCRg, iRND, on_pre = preRND,
+            method = 'rk4', dt = t_step, name = "HTCR_RND_cs")
 
     #->RTCL Synapses
-    RTCL_HTCL_gj = Synapses(HTCLg,RTCLg,(GJ + igjHR_eqs))
-    RTCL_INL_cs = Synapses(INLg,RTCLg,(CSa + iIN_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    RTCL_REL_cs = Synapses(RELg,RTCLg,(CSa + iRE_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    RTCL_PYL_csa = Synapses(PYLg, RTCLg, (CSa + iPYLa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
-    RTCL_PYL_csb = Synapses(PYLg, RTCLg, (CSb + iPYLb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
-    RTCL_RND_cs = Synapses(RNDg, RTCLg, iRND, on_pre = preRND, method = 'rk4', dt = t_step)
+    RTCL_HTCL_gj = Synapses(HTCLg,RTCLg,(GJ + igjHR_eqs), name = "RTCL_HTCL_gj")
+    RTCL_INL_cs = Synapses(INLg,RTCLg,(CSa + iIN_eqs),on_pre = preCS,
+            method = 'rk4', dt = t_step, name = "RTCL_INL_cs")
+    RTCL_REL_cs = Synapses(RELg,RTCLg,(CSa + iRE_eqs),on_pre = preCS,
+            method = 'rk4', dt = t_step, name = "RTCL_REL_cs")
+    RTCL_PYL_csa = Synapses(PYLg, RTCLg, (CSa + iPYLa_eqs), on_pre = preCS,
+            method = 'rk4', dt = t_step, name = "RTCL_PYL_csa")
+    RTCL_PYL_csb = Synapses(PYLg, RTCLg, (CSb + iPYLb_eqs), on_pre = preCS,
+            method = 'rk4', dt = t_step, name = "RTCL_PYL_csb")
+    RTCL_RND_cs = Synapses(RNDg, RTCLg, iRND, on_pre = preRND,
+            method = 'rk4', dt = t_step, name = "RTCL_RND_cs")
     #->RTCR Synapses
     RTCR_HTCR_gj = Synapses(HTCRg,RTCRg,(GJ + igjHR_eqs))
-    RTCR_INR_cs = Synapses(INRg,RTCRg,(CSa + iIN_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    RTCR_RER_cs = Synapses(RERg,RTCRg,(CSa + iRE_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    RTCR_PYR_csa = Synapses(PYRg, RTCRg, (CSa + iPYRa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
-    RTCR_PYR_csb = Synapses(PYRg, RTCRg, (CSb + iPYRb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
-    RTCR_RND_cs = Synapses(RNDg, RTCRg, iRND, on_pre = preRND, method = 'rk4', dt = t_step)
+    RTCR_INR_cs = Synapses(INRg,RTCRg,(CSa + iIN_eqs),on_pre = preCS,
+            method = 'rk4', dt = t_step, name = "RCTR_INR_cs")
+    RTCR_RER_cs = Synapses(RERg,RTCRg,(CSa + iRE_eqs),on_pre = preCS,
+            method = 'rk4', dt = t_step, name = "RTCR_RER_cs")
+    RTCR_PYR_csa = Synapses(PYRg, RTCRg, (CSa + iPYRa_eqs), on_pre = preCS,
+            method = 'rk4', dt = t_step, name = "RTCR_PYR_csa")
+    RTCR_PYR_csb = Synapses(PYRg, RTCRg, (CSb + iPYRb_eqs), on_pre = preCS,
+            method = 'rk4', dt = t_step, name = "RTCR_PYR_csb")
+    RTCR_RND_cs = Synapses(RNDg, RTCRg, iRND, on_pre = preRND,
+            method = 'rk4', dt = t_step, name = "RTCR_RND_cs")
 
     #->INL Synapses
-    INL_HTCL_csa = Synapses(HTCLg,INLg,(CSa + iHTCa_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    INL_HTCL_csb = Synapses(HTCLg,INLg,(CSb + iHTCb_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    INL_REL_cs = Synapses(RELg,INLg,(CSa + iRE_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    INL_RND_cs = Synapses(RNDg, INLg, iRND, on_pre = preRND, method = 'rk4', dt = t_step)
+    INL_HTCL_csa = Synapses(HTCLg,INLg,(CSa + iHTCa_eqs),on_pre = preCS,
+            method = 'rk4', dt = t_step, name = "INL_HTCL_csa")
+    INL_HTCL_csb = Synapses(HTCLg,INLg,(CSb + iHTCb_eqs),on_pre = preCS,
+            method = 'rk4', dt = t_step, name = "INL_HTCL_csb")
+    INL_REL_cs = Synapses(RELg,INLg,(CSa + iRE_eqs),on_pre = preCS,
+            method = 'rk4', dt = t_step, name = "INL_REL_cs")
+    INL_RND_cs = Synapses(RNDg, INLg, iRND, on_pre = preRND,
+            method = 'rk4', dt = t_step, name = "INL_RND_cs")
     #->INR Synapses
-    INR_HTCR_csa = Synapses(HTCRg,INRg,(CSa + iHTCa_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    INR_HTCR_csb = Synapses(HTCRg,INRg,(CSb + iHTCb_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    INR_RER_cs = Synapses(RERg,INRg,(CSa + iRE_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    INR_RND_cs = Synapses(RNDg, INRg, iRND, on_pre = preRND, method = 'rk4', dt = t_step)
+    INR_HTCR_csa = Synapses(HTCRg,INRg,(CSa + iHTCa_eqs),on_pre = preCS,
+            method = 'rk4', dt = t_step, name = "INR_HTCR_csa")
+    INR_HTCR_csb = Synapses(HTCRg,INRg,(CSb + iHTCb_eqs),on_pre = preCS,
+            method = 'rk4', dt = t_step, name = "INR_HTCR_csb")
+    INR_RER_cs = Synapses(RERg,INRg,(CSa + iRE_eqs),on_pre = preCS,
+            method = 'rk4', dt = t_step, name = "INR_RER_cs")
+    INR_RND_cs = Synapses(RNDg, INRg, iRND, on_pre = preRND,
+            method = 'rk4', dt = t_step, name = "INR_RND_cs")
 
     #->REL Synapses
     REL_REL_gj = Synapses(RELg,RELg,(GJ + igj_eqs))
-    REL_HTCL_csa = Synapses(HTCLg,RELg,(CSa + iHTCa_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    REL_HTCL_csb = Synapses(HTCLg,RELg,(CSb + iHTCb_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    REL_RTCL_csa = Synapses(RTCLg,RELg,(CSa + iRTCLa_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    REL_RTCL_csb = Synapses(RTCLg,RELg,(CSb + iRTCLb_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    REL_REL_cs = Synapses(RELg,RELg,(CSa + iRE_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    REL_PYL_csa = Synapses(PYLg, RELg, (CSa + iPYLa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
-    REL_PYL_csb = Synapses(PYLg, RELg, (CSb + iPYLb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
-    REL_RND_cs = Synapses(RNDg, RELg, iRND, on_pre = preRND, method = 'rk4', dt = t_step)
+    REL_HTCL_csa = Synapses(HTCLg,RELg,(CSa + iHTCa_eqs),on_pre = preCS,
+            method = 'rk4', dt = t_step, name = "REL_HTCL_csa")
+    REL_HTCL_csb = Synapses(HTCLg,RELg,(CSb + iHTCb_eqs),on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "REL_HTCL_csb")
+    REL_RTCL_csa = Synapses(RTCLg,RELg,(CSa + iRTCLa_eqs),on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "REL_RTCL_csa")
+    REL_RTCL_csb = Synapses(RTCLg,RELg,(CSb + iRTCLb_eqs),on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "REL_RTCL_csb")
+    REL_REL_cs = Synapses(RELg,RELg,(CSa + iRE_eqs),on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "REL_REL_cs")
+    REL_PYL_csa = Synapses(PYLg, RELg, (CSa + iPYLa_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "REL_PYL_csa")
+    REL_PYL_csb = Synapses(PYLg, RELg, (CSb + iPYLb_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "REL_PYL_csb")
+    REL_RND_cs = Synapses(RNDg, RELg, iRND, on_pre = preRND, 
+            method = 'rk4', dt = t_step, name = "REL_RND_cs")
     #->RER Synapses
     RER_RER_gj = Synapses(RERg,RERg,(GJ + igj_eqs))
-    RER_HTCR_csa = Synapses(HTCRg,RERg,(CSa + iHTCa_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    RER_HTCR_csb = Synapses(HTCRg,RERg,(CSb + iHTCb_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    RER_RTCR_csa = Synapses(RTCRg,RERg,(CSa + iRTCRa_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    RER_RTCR_csb = Synapses(RTCRg,RERg,(CSb + iRTCRb_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    RER_RER_cs = Synapses(RERg,RERg,(CSa + iRE_eqs),on_pre = preCS, method = 'rk4', dt = t_step)
-    RER_PYR_csa = Synapses(PYRg, RERg, (CSa + iPYRa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
-    RER_PYR_csb = Synapses(PYRg, RERg, (CSb + iPYRb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
-    RER_RND_cs = Synapses(RNDg, RERg, iRND, on_pre = preRND, method = 'rk4', dt = t_step)
+    RER_HTCR_csa = Synapses(HTCRg,RERg,(CSa + iHTCa_eqs),on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RER_HTCR_csa")
+    RER_HTCR_csb = Synapses(HTCRg,RERg,(CSb + iHTCb_eqs),on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RER_HTCR_csb")
+    RER_RTCR_csa = Synapses(RTCRg,RERg,(CSa + iRTCRa_eqs),on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RER_RTCR_csa")
+    RER_RTCR_csb = Synapses(RTCRg,RERg,(CSb + iRTCRb_eqs),on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RER_RTCR_csb")
+    RER_RER_cs = Synapses(RERg,RERg,(CSa + iRE_eqs),on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RER_RER_cs")
+    RER_PYR_csa = Synapses(PYRg, RERg, (CSa + iPYRa_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RER_PYR_csa")
+    RER_PYR_csb = Synapses(PYRg, RERg, (CSb + iPYRb_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RER_PYR_csb")
+    RER_RND_cs = Synapses(RNDg, RERg, iRND, on_pre = preRND, 
+            method = 'rk4', dt = t_step, name = "RER_RND_cs")
 
     #->PYL Synapses
-    PYL_RTCL_cs = Synapses(RTCLg,PYLg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    PYL_PYL_cs = Synapses(PYLg,PYLg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    PYL_FSL_cs = Synapses(FSLg,PYLg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    PYL_RND = Synapses(RNDg,PYLg,RND_PYFS,on_pre = preRND_PYFS, method = 'rk4', dt = t_step)
+    PYL_RTCL_cs = Synapses(RTCLg,PYLg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "PYL_RTCL_cs")
+    PYL_PYL_cs = Synapses(PYLg,PYLg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "PYL_PYL_cs")
+    PYL_FSL_cs = Synapses(FSLg,PYLg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "PYL_FSL_cs")
+    PYL_RND = Synapses(RNDg,PYLg,RND_PYFS,on_pre = preRND_PYFS, 
+            method = 'rk4', dt = t_step, name = "PYL_RND")
     #->PY Synapses
-    PYR_RTCR_cs = Synapses(RTCRg,PYRg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    PYR_PYR_cs = Synapses(PYRg,PYRg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    PYR_FSR_cs = Synapses(FSRg,PYRg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    PYR_RND = Synapses(RNDg,PYRg,RND_PYFS,on_pre = preRND_PYFS, method = 'rk4', dt = t_step)
+    PYR_RTCR_cs = Synapses(RTCRg,PYRg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "PYR_RTCR_cs")
+    PYR_PYR_cs = Synapses(PYRg,PYRg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "PYR_PYR_cs")
+    PYR_FSR_cs = Synapses(FSRg,PYRg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "PYR_FSR_cs")
+    PYR_RND = Synapses(RNDg,PYRg,RND_PYFS,on_pre = preRND_PYFS, 
+            method = 'rk4', dt = t_step, name = "PYR_RND")
 
     #->FSL Synapses
-    FSL_RTCL_cs = Synapses(RTCLg,FSLg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    FSL_PYL_cs = Synapses(PYLg,FSLg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    FSL_FSL_cs = Synapses(FSLg,FSLg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    FSL_RND = Synapses(RNDg,FSLg,RND_PYFS,on_pre = preRND_PYFS, method = 'rk4', dt = t_step)
-    FSL_RND = Synapses(RNDg,FSLg,RND_PYFS,on_pre = preRND_PYFS, method = 'rk4', dt = t_step)
+    FSL_RTCL_cs = Synapses(RTCLg,FSLg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "FSL_RTCL_cs")
+    FSL_PYL_cs = Synapses(PYLg,FSLg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "FSL_PYL_cs")
+    FSL_FSL_cs = Synapses(FSLg,FSLg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "FSL_FSL_cs")
+    FSL_RND = Synapses(RNDg,FSLg,RND_PYFS,on_pre = preRND_PYFS, 
+            method = 'rk4', dt = t_step, name = "FSL_RND")
+
     #->FSR Synapses
-    FSR_RTCR_cs = Synapses(RTCRg,FSRg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    FSR_PYR_cs = Synapses(PYRg,FSRg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    FSR_FSR_cs = Synapses(FSRg,FSRg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
-    FSR_RND = Synapses(RNDg,FSRg,RND_PYFS,on_pre = preRND_PYFS, method = 'rk4', dt = t_step)
-    FSR_RND = Synapses(RNDg,FSRg,RND_PYFS,on_pre = preRND_PYFS, method = 'rk4', dt = t_step)
+    FSR_RTCR_cs = Synapses(RTCRg,FSRg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "FSR_RTCT_cs")
+    FSR_PYR_cs = Synapses(PYRg,FSRg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "FSR_PYR_cs")
+    FSR_FSR_cs = Synapses(FSRg,FSRg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "FSR_FSR_cs")
+    FSR_RND = Synapses(RNDg,FSRg,RND_PYFS,on_pre = preRND_PYFS, 
+            method = 'rk4', dt = t_step, name = "FSR_RND")
+
     #Declare Connections
 
     #->HTCL
@@ -1210,14 +1264,16 @@ def main():
 #Thalamocortical crosses
 #------------------------------------------------------------------
 
-    PYL_RTCR_cs = Synapses(RTCRg,PYLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    PYL_RTCR_cs = Synapses(RTCRg,PYLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS,
+            method = 'rk4', dt = t_step, name = "PYL_RTCR_cs")
     PYL_RTCR_cs.connect(p = '0.04')
     PYL_RTCR_cs.tau = 2*ms
     PYL_RTCR_cs.e_syn = 0*mV
     PYL_RTCR_cs.g_spike = 0.3*nS
 
 
-    PYR_RTCL_cs = Synapses(RTCLg,PYRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    PYR_RTCL_cs = Synapses(RTCLg,PYRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "PYR_RTCL_cs")
     PYR_RTCL_cs.connect(p = '0.04')
     PYR_RTCL_cs.tau = 2*ms
     PYR_RTCL_cs.e_syn = 0*mV
@@ -1225,14 +1281,16 @@ def main():
 
 
 
-    FSR_RTCL_cs = Synapses(RTCLg,FSRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    FSR_RTCL_cs = Synapses(RTCLg,FSRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "FSR_RTCL_cs")
     FSR_RTCL_cs.connect(p = '0.02')
     FSR_RTCL_cs.tau = 2*ms
     FSR_RTCL_cs.e_syn = 0*mV
     FSR_RTCL_cs.g_spike = 0.4*nS
 
 
-    FSL_RTCR_cs = Synapses(RTCRg,FSLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, method = 'rk4', dt = t_step)
+    FSL_RTCR_cs = Synapses(RTCRg,FSLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "FSL_RTCR_cs")
     FSL_RTCR_cs.connect(p = '0.02')
     FSL_RTCR_cs.tau = 2*ms
     FSL_RTCR_cs.e_syn = 0*mV
@@ -1244,7 +1302,8 @@ def main():
 #Corticothalamic crosses
 #------------------------------------------------------------------
 
-    RTCR_PYL_csa = Synapses(PYLg, RTCRg, (CSa + iPYLa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RTCR_PYL_csa = Synapses(PYLg, RTCRg, (CSa + iPYLa_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RTCR_PYL_csa")
     RTCR_PYL_csa.connect(p = '0.23')
     RTCR_PYL_csa.D_i = 1.07
     RTCR_PYL_csa.g_syn = 4*nS
@@ -1252,7 +1311,8 @@ def main():
     RTCR_PYL_csa.alpha = 0.94/ms
     RTCR_PYL_csa.beta = 0.18/ms
 
-    RTCL_PYR_csa = Synapses(PYRg, RTCLg, (CSa + iPYRa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RTCL_PYR_csa = Synapses(PYRg, RTCLg, (CSa + iPYRa_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RTCL_PYR_csa")
     RTCL_PYR_csa.connect(p = '0.23')
     RTCL_PYR_csa.D_i = 1.07
     RTCL_PYR_csa.g_syn = 4*nS
@@ -1260,21 +1320,24 @@ def main():
     RTCL_PYR_csa.alpha = 0.94/ms
     RTCL_PYR_csa.beta = 0.18/ms
 
-    RTCR_PYL_csb = Synapses(PYLg, RTCRg, (CSb + iPYLb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RTCR_PYL_csb = Synapses(PYLg, RTCRg, (CSb + iPYLb_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RTCR_PYL_csb")
     RTCR_PYL_csb.connect(i = RTCR_PYL_csa.i[:], j = RTCR_PYL_csa.j[:])
     RTCR_PYL_csb.D_i = 1.07
     RTCR_PYL_csb.g_syn = 2*nS
     RTCR_PYL_csb.alpha = 1/ms
     RTCR_PYL_csb.beta = 0.0067/ms
 
-    RTCL_PYR_csb = Synapses(PYRg, RTCLg, (CSb + iPYRb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RTCL_PYR_csb = Synapses(PYRg, RTCLg, (CSb + iPYRb_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RTCL_PYR_csb")
     RTCL_PYR_csb.connect(i = RTCL_PYR_csa.i[:], j = RTCL_PYR_csa.j[:])
     RTCL_PYR_csb.D_i = 1.07
     RTCL_PYR_csb.g_syn = 2*nS
     RTCL_PYR_csb.alpha = 1/ms
     RTCL_PYR_csb.beta = 0.0067/ms
 
-    RER_PYL_csa = Synapses(PYLg, RERg, (CSa + iPYLa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RER_PYL_csa = Synapses(PYLg, RERg, (CSa + iPYLa_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RER_PYL_csa")
     RER_PYL_csa.connect(p = '0.3')
     RER_PYL_csa.D_i = 1.07
     RER_PYL_csa.g_syn = 4*nS
@@ -1282,7 +1345,8 @@ def main():
     RER_PYL_csa.alpha = 0.94/ms
     RER_PYL_csa.beta = 0.18/ms
 
-    REL_PYR_csa = Synapses(PYRg, RELg, (CSa + iPYRa_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    REL_PYR_csa = Synapses(PYRg, RELg, (CSa + iPYRa_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "REL_PYR_csa")
     REL_PYR_csa.connect(p = '0.3')
     REL_PYR_csa.D_i = 1.07
     REL_PYR_csa.g_syn = 4*nS
@@ -1291,14 +1355,16 @@ def main():
     REL_PYR_csa.beta = 0.18/ms
 
 
-    RER_PYL_csb = Synapses(PYLg, RERg, (CSb + iPYLb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    RER_PYL_csb = Synapses(PYLg, RERg, (CSb + iPYLb_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RER_PYL_csb")
     RER_PYL_csb.connect(i = RER_PYL_csa.i[:], j = RER_PYL_csa.j[:])
     RER_PYL_csb.D_i = 1.07
     RER_PYL_csb.g_syn = 2*nS
     RER_PYL_csb.alpha = 1/ms
     RER_PYL_csb.beta = 0.0067/ms
 
-    REL_PYR_csb = Synapses(PYRg, RELg, (CSb + iPYRb_eqs), on_pre = preCS, method = 'rk4', dt = t_step)
+    REL_PYR_csb = Synapses(PYRg, RELg, (CSb + iPYRb_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "REL_PYR_csb")
     REL_PYR_csb.connect(i = REL_PYR_csa.i[:], j = REL_PYR_csa.j[:])
     REL_PYR_csb.D_i = 1.07
     REL_PYR_csb.g_syn = 2*nS
