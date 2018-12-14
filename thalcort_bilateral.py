@@ -304,7 +304,6 @@ def main():
     right.append(TCRg)
 
     #Declare HTCL Group
-    HTCLg = TCLg[:nHTC**2]
     HTCLg = Subgroup(source = TCLg, start = 0, stop = nHTC**2, name = "HTCLg")
     HTCLg.g_Ca = 3*mS/cm**2
     HTCLg.g_Cal = 0.5*mS/cm**2
@@ -316,7 +315,6 @@ def main():
     left.append(HTCLg)
 
     #Declare HTCR Group
-    HTCRg = TCRg[:nHTC**2]
     HTCRg = Subgroup(source = TCRg, start = 0, stop = nHTC**2, name = "HTCRg")
     HTCRg.g_Ca = 3*mS/cm**2
     HTCRg.g_Cal = 0.5*mS/cm**2
@@ -328,7 +326,6 @@ def main():
     right.append(HTCRg)
 
     #Declare RTCL Group
-    RTCLg = TCLg[nHTC**2:]
     RTCLg = Subgroup(source = TCLg, start = nHTC**2,  stop = len(TCLg), name = "RTCLg")
     RTCLg.g_Ca = 0.6*mS/cm**2
     RTCLg.g_Cal = 0.3*mS/cm**2
@@ -341,7 +338,6 @@ def main():
     left.append(RTCLg)
 
     #Declare RTCR Group
-    RTCRg = TCRg[nHTC**2:]
     RTCRg = Subgroup(source = TCRg, start = nHTC**2,  stop = len(TCRg), name = "RTCRg")
     RTCRg.g_Ca = 0.6*mS/cm**2
     RTCRg.g_Cal = 0.3*mS/cm**2
