@@ -305,6 +305,7 @@ def main():
 
     #Declare HTCL Group
     HTCLg = TCLg[:nHTC**2]
+    HTCLg = Subgroup(source = TCLg, start = 0, stop = nHTC**2, name = "HTCLg")
     HTCLg.g_Ca = 3*mS/cm**2
     HTCLg.g_Cal = 0.5*mS/cm**2
     HTCLg.v_SH = -30*mV
@@ -316,6 +317,7 @@ def main():
 
     #Declare HTCR Group
     HTCRg = TCRg[:nHTC**2]
+    HTCRg = Subgroup(source = TCRg, start = 0, stop = nHTC**2, name = "HTCRg")
     HTCRg.g_Ca = 3*mS/cm**2
     HTCRg.g_Cal = 0.5*mS/cm**2
     HTCRg.v_SH = -30*mV
@@ -327,6 +329,7 @@ def main():
 
     #Declare RTCL Group
     RTCLg = TCLg[nHTC**2:]
+    RTCLg = Subgroup(source = TCLg, start = nHTC**2,  stop = len(TCLg), name = "RTCLg")
     RTCLg.g_Ca = 0.6*mS/cm**2
     RTCLg.g_Cal = 0.3*mS/cm**2
     RTCLg.v_SH = -40*mV
@@ -339,6 +342,7 @@ def main():
 
     #Declare RTCR Group
     RTCRg = TCRg[nHTC**2:]
+    RTCRg = Subgroup(source = TCRg, start = nHTC**2,  stop = len(TCRg), name = "RTCRg")
     RTCRg.g_Ca = 0.6*mS/cm**2
     RTCRg.g_Cal = 0.3*mS/cm**2
     RTCRg.v_SH = -40*mV
@@ -444,7 +448,6 @@ def main():
 
 
     #PYL Group Declaration
-    #PYLg = PYFSLg[:nPY]
     PYLg.Cm = (100 + 0.1*randn(nPY))*pF
     PYLg.k = 0.7*pA/(mvolt*mvolt)
     PYLg.vr = -60*mV + .1*randn(nPY)*mV
@@ -463,7 +466,6 @@ def main():
     left.append(PYLg)
 
     #PYR Group Declaration
-    #PYRg = PYFSRg[:nPY]
     PYRg.Cm = (100 + 0.1*randn(nPY))*pF
     PYRg.k = 0.7*pA/(mvolt*mvolt)
     PYRg.vr = -60*mV + .1*randn(nPY)*mV
@@ -483,7 +485,6 @@ def main():
 
 
     #FS Group Declaration
-    #FSLg = PYFSLg[nPY:]
     FSLg.Cm = (20 + 0.1*randn(nFS))*pF
     FSLg.k = (1 + 0.01*randn(nFS))*pA/(mvolt*mvolt)
     FSLg.vr = -55*mV + 0.1*randn(nFS)*mV
@@ -501,7 +502,6 @@ def main():
     left.append(FSLg)
 
     #FS Group Declaration
-    #FSRg = PYFSRg[nPY:]
     FSRg.Cm = (20 + 0.1*randn(nFS))*pF
     FSRg.k = (1 + 0.01*randn(nFS))*pA/(mvolt*mvolt)
     FSRg.vr = -55*mV + 0.1*randn(nFS)*mV
