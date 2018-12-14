@@ -1,7 +1,12 @@
+#!/usr/bin/env python
 from brian2 import *
-
+import time
+import os
 def main():
-    seed(555)
+    
+    connected = True
+
+    #seed(555)
 
     prefs.codegen.target = 'numpy'
     BrianLogger.log_level_debug()
@@ -59,7 +64,7 @@ def main():
     nFS = 20
 
     #Time constants
-    duration = 0.05*second
+    duration = 0.1*second
     t_step = 0.02*ms
 
     #tACs Signal Array
@@ -1209,174 +1214,178 @@ def main():
     FSR_RND.std = 0.1*pA
     FSR_RND.randi = randn()
 
-#Cortical Crosses
-#-----------------------------------------------------------------
-    PYL_PYR_cs = Synapses(PYRg,PYLg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS,
-            method = 'rk4', dt = t_step, name = "PYL_PYR")
-    PYL_PYR_cs.connect(p = '0.5')
-    PYL_PYR_cs.tau = 2*ms
-    PYL_PYR_cs.e_syn = 0*mV
-    PYL_PYR_cs.g_spike = 0.3*nS
+    if(connected):
 
-    PYR_PYL_cs = Synapses(PYLg,PYRg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS,
-            method = 'rk4', dt = t_step, name = "PYR_PYL")
-    PYR_PYL_cs.connect(p = '0.5')
-    PYR_PYL_cs.tau = 2*ms
-    PYR_PYL_cs.e_syn = 0*mV
-    PYR_PYL_cs.g_spike = 0.3*nS
+        PYL_PYR_cs = Synapses(PYRg,PYLg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS,
+                method = 'rk4', dt = t_step, name = "PYL_PYR")
+        PYL_PYR_cs.connect(p = '0.5')
+        PYL_PYR_cs.tau = 2*ms
+        PYL_PYR_cs.e_syn = 0*mV
+        PYL_PYR_cs.g_spike = 0.3*nS
 
-    PYL_FSR_cs = Synapses(FSRg,PYLg,(PYFS_cs + iFSR_eqs),on_pre = prePYFS,
-            method = 'rk4', dt = t_step, name = "PYL_FSR")
-    PYL_FSR_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p = '0.8')
-    PYL_FSR_cs.tau = 10*ms
-    PYL_FSR_cs.e_syn = -70*mV
-    PYL_FSR_cs.g_spike = 0.3*nS
+        PYR_PYL_cs = Synapses(PYLg,PYRg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS,
+                method = 'rk4', dt = t_step, name = "PYR_PYL")
+        PYR_PYL_cs.connect(p = '0.5')
+        PYR_PYL_cs.tau = 2*ms
+        PYR_PYL_cs.e_syn = 0*mV
+        PYR_PYL_cs.g_spike = 0.3*nS
 
-    PYR_FSL_cs = Synapses(FSLg,PYRg,(PYFS_cs + iFSL_eqs),on_pre = prePYFS,
-            method = 'rk4', dt = t_step, name = "PYR_FSL")
-    PYR_FSL_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p = '0.8')
-    PYR_FSL_cs.tau = 10*ms
-    PYR_FSL_cs.e_syn = -70*mV
-    PYR_FSL_cs.g_spike = 0.3*nS
+        PYL_FSR_cs = Synapses(FSRg,PYLg,(PYFS_cs + iFSR_eqs),on_pre = prePYFS,
+                method = 'rk4', dt = t_step, name = "PYL_FSR")
+        PYL_FSR_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p = '0.8')
+        PYL_FSR_cs.tau = 10*ms
+        PYL_FSR_cs.e_syn = -70*mV
+        PYL_FSR_cs.g_spike = 0.3*nS
 
-    FSR_PYL_cs = Synapses(PYLg,FSRg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS,
-            method = 'rk4', dt = t_step, name = "FSR_PYL")
-    FSR_PYL_cs.connect(i = PYL_FSR_cs.j[:], j = PYL_FSR_cs.i[:])
-    FSR_PYL_cs.tau = 2*ms
-    FSR_PYL_cs.e_syn = 0*mV
-    FSR_PYL_cs.g_spike = 0.4*nS
+        PYR_FSL_cs = Synapses(FSLg,PYRg,(PYFS_cs + iFSL_eqs),on_pre = prePYFS,
+                method = 'rk4', dt = t_step, name = "PYR_FSL")
+        PYR_FSL_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p = '0.8')
+        PYR_FSL_cs.tau = 10*ms
+        PYR_FSL_cs.e_syn = -70*mV
+        PYR_FSL_cs.g_spike = 0.3*nS
 
-    FSL_PYR_cs = Synapses(PYRg,FSLg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS,
-            method = 'rk4', dt = t_step, name = "FSL_PYR")
-    FSL_PYR_cs.connect(i = PYR_FSL_cs.j[:], j = PYR_FSL_cs.i[:])
-    FSL_PYR_cs.tau = 2*ms
-    FSL_PYR_cs.e_syn = 0*mV
-    FSL_PYR_cs.g_spike = 0.4*nS
-#------------------------------------------------------------------
+        FSR_PYL_cs = Synapses(PYLg,FSRg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS,
+                method = 'rk4', dt = t_step, name = "FSR_PYL")
+        FSR_PYL_cs.connect(i = PYL_FSR_cs.j[:], j = PYL_FSR_cs.i[:])
+        FSR_PYL_cs.tau = 2*ms
+        FSR_PYL_cs.e_syn = 0*mV
+        FSR_PYL_cs.g_spike = 0.4*nS
 
-#Thalamic Crosses
-#None for now, seems to be pretty lateralized
-
-#Thalamocortical crosses
-#------------------------------------------------------------------
-
-    PYL_RTCR_cs = Synapses(RTCRg,PYLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS,
-            method = 'rk4', dt = t_step, name = "PYL_RTCR_cs")
-    PYL_RTCR_cs.connect(p = '0.04')
-    PYL_RTCR_cs.tau = 2*ms
-    PYL_RTCR_cs.e_syn = 0*mV
-    PYL_RTCR_cs.g_spike = 0.3*nS
+        FSL_PYR_cs = Synapses(PYRg,FSLg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS,
+                method = 'rk4', dt = t_step, name = "FSL_PYR")
+        FSL_PYR_cs.connect(i = PYR_FSL_cs.j[:], j = PYR_FSL_cs.i[:])
+        FSL_PYR_cs.tau = 2*ms
+        FSL_PYR_cs.e_syn = 0*mV
+        FSL_PYR_cs.g_spike = 0.4*nS
 
 
-    PYR_RTCL_cs = Synapses(RTCLg,PYRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
-            method = 'rk4', dt = t_step, name = "PYR_RTCL_cs")
-    PYR_RTCL_cs.connect(p = '0.04')
-    PYR_RTCL_cs.tau = 2*ms
-    PYR_RTCL_cs.e_syn = 0*mV
-    PYR_RTCL_cs.g_spike = 0.3*nS
+        PYL_RTCR_cs = Synapses(RTCRg,PYLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS,
+                method = 'rk4', dt = t_step, name = "PYL_RTCR_cs")
+        PYL_RTCR_cs.connect(p = '0.04')
+        PYL_RTCR_cs.tau = 2*ms
+        PYL_RTCR_cs.e_syn = 0*mV
+        PYL_RTCR_cs.g_spike = 0.3*nS
+
+
+        PYR_RTCL_cs = Synapses(RTCLg,PYRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
+                method = 'rk4', dt = t_step, name = "PYR_RTCL_cs")
+        PYR_RTCL_cs.connect(p = '0.04')
+        PYR_RTCL_cs.tau = 2*ms
+        PYR_RTCL_cs.e_syn = 0*mV
+        PYR_RTCL_cs.g_spike = 0.3*nS
 
 
 
-    FSR_RTCL_cs = Synapses(RTCLg,FSRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
-            method = 'rk4', dt = t_step, name = "FSR_RTCL_cs")
-    FSR_RTCL_cs.connect(p = '0.02')
-    FSR_RTCL_cs.tau = 2*ms
-    FSR_RTCL_cs.e_syn = 0*mV
-    FSR_RTCL_cs.g_spike = 0.4*nS
+        FSR_RTCL_cs = Synapses(RTCLg,FSRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
+                method = 'rk4', dt = t_step, name = "FSR_RTCL_cs")
+        FSR_RTCL_cs.connect(p = '0.02')
+        FSR_RTCL_cs.tau = 2*ms
+        FSR_RTCL_cs.e_syn = 0*mV
+        FSR_RTCL_cs.g_spike = 0.4*nS
 
 
-    FSL_RTCR_cs = Synapses(RTCRg,FSLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, 
-            method = 'rk4', dt = t_step, name = "FSL_RTCR_cs")
-    FSL_RTCR_cs.connect(p = '0.02')
-    FSL_RTCR_cs.tau = 2*ms
-    FSL_RTCR_cs.e_syn = 0*mV
-    FSL_RTCR_cs.g_spike = 0.4*nS
+        FSL_RTCR_cs = Synapses(RTCRg,FSLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, 
+                method = 'rk4', dt = t_step, name = "FSL_RTCR_cs")
+        FSL_RTCR_cs.connect(p = '0.02')
+        FSL_RTCR_cs.tau = 2*ms
+        FSL_RTCR_cs.e_syn = 0*mV
+        FSL_RTCR_cs.g_spike = 0.4*nS
 
 
-#------------------------------------------------------------------
+        RTCR_PYL_csa = Synapses(PYLg, RTCRg, (CSa + iPYLa_eqs), on_pre = preCS, 
+                method = 'rk4', dt = t_step, name = "RTCR_PYL_csa")
+        RTCR_PYL_csa.connect(p = '0.23')
+        RTCR_PYL_csa.D_i = 1.07
+        RTCR_PYL_csa.g_syn = 4*nS
+        RTCR_PYL_csa.e_syn = 0*mV
+        RTCR_PYL_csa.alpha = 0.94/ms
+        RTCR_PYL_csa.beta = 0.18/ms
 
-#Corticothalamic crosses
-#------------------------------------------------------------------
+        RTCL_PYR_csa = Synapses(PYRg, RTCLg, (CSa + iPYRa_eqs), on_pre = preCS, 
+                method = 'rk4', dt = t_step, name = "RTCL_PYR_csa")
+        RTCL_PYR_csa.connect(p = '0.23')
+        RTCL_PYR_csa.D_i = 1.07
+        RTCL_PYR_csa.g_syn = 4*nS
+        RTCL_PYR_csa.e_syn = 0*mV
+        RTCL_PYR_csa.alpha = 0.94/ms
+        RTCL_PYR_csa.beta = 0.18/ms
 
-    RTCR_PYL_csa = Synapses(PYLg, RTCRg, (CSa + iPYLa_eqs), on_pre = preCS, 
-            method = 'rk4', dt = t_step, name = "RTCR_PYL_csa")
-    RTCR_PYL_csa.connect(p = '0.23')
-    RTCR_PYL_csa.D_i = 1.07
-    RTCR_PYL_csa.g_syn = 4*nS
-    RTCR_PYL_csa.e_syn = 0*mV
-    RTCR_PYL_csa.alpha = 0.94/ms
-    RTCR_PYL_csa.beta = 0.18/ms
+        RTCR_PYL_csb = Synapses(PYLg, RTCRg, (CSb + iPYLb_eqs), on_pre = preCS, 
+                method = 'rk4', dt = t_step, name = "RTCR_PYL_csb")
+        RTCR_PYL_csb.connect(i = RTCR_PYL_csa.i[:], j = RTCR_PYL_csa.j[:])
+        RTCR_PYL_csb.D_i = 1.07
+        RTCR_PYL_csb.g_syn = 2*nS
+        RTCR_PYL_csb.alpha = 1/ms
+        RTCR_PYL_csb.beta = 0.0067/ms
 
-    RTCL_PYR_csa = Synapses(PYRg, RTCLg, (CSa + iPYRa_eqs), on_pre = preCS, 
-            method = 'rk4', dt = t_step, name = "RTCL_PYR_csa")
-    RTCL_PYR_csa.connect(p = '0.23')
-    RTCL_PYR_csa.D_i = 1.07
-    RTCL_PYR_csa.g_syn = 4*nS
-    RTCL_PYR_csa.e_syn = 0*mV
-    RTCL_PYR_csa.alpha = 0.94/ms
-    RTCL_PYR_csa.beta = 0.18/ms
+        RTCL_PYR_csb = Synapses(PYRg, RTCLg, (CSb + iPYRb_eqs), on_pre = preCS, 
+                method = 'rk4', dt = t_step, name = "RTCL_PYR_csb")
+        RTCL_PYR_csb.connect(i = RTCL_PYR_csa.i[:], j = RTCL_PYR_csa.j[:])
+        RTCL_PYR_csb.D_i = 1.07
+        RTCL_PYR_csb.g_syn = 2*nS
+        RTCL_PYR_csb.alpha = 1/ms
+        RTCL_PYR_csb.beta = 0.0067/ms
 
-    RTCR_PYL_csb = Synapses(PYLg, RTCRg, (CSb + iPYLb_eqs), on_pre = preCS, 
-            method = 'rk4', dt = t_step, name = "RTCR_PYL_csb")
-    RTCR_PYL_csb.connect(i = RTCR_PYL_csa.i[:], j = RTCR_PYL_csa.j[:])
-    RTCR_PYL_csb.D_i = 1.07
-    RTCR_PYL_csb.g_syn = 2*nS
-    RTCR_PYL_csb.alpha = 1/ms
-    RTCR_PYL_csb.beta = 0.0067/ms
+        RER_PYL_csa = Synapses(PYLg, RERg, (CSa + iPYLa_eqs), on_pre = preCS, 
+                method = 'rk4', dt = t_step, name = "RER_PYL_csa")
+        RER_PYL_csa.connect(p = '0.3')
+        RER_PYL_csa.D_i = 1.07
+        RER_PYL_csa.g_syn = 4*nS
+        RER_PYL_csa.e_syn = 0*mV
+        RER_PYL_csa.alpha = 0.94/ms
+        RER_PYL_csa.beta = 0.18/ms
 
-    RTCL_PYR_csb = Synapses(PYRg, RTCLg, (CSb + iPYRb_eqs), on_pre = preCS, 
-            method = 'rk4', dt = t_step, name = "RTCL_PYR_csb")
-    RTCL_PYR_csb.connect(i = RTCL_PYR_csa.i[:], j = RTCL_PYR_csa.j[:])
-    RTCL_PYR_csb.D_i = 1.07
-    RTCL_PYR_csb.g_syn = 2*nS
-    RTCL_PYR_csb.alpha = 1/ms
-    RTCL_PYR_csb.beta = 0.0067/ms
-
-    RER_PYL_csa = Synapses(PYLg, RERg, (CSa + iPYLa_eqs), on_pre = preCS, 
-            method = 'rk4', dt = t_step, name = "RER_PYL_csa")
-    RER_PYL_csa.connect(p = '0.3')
-    RER_PYL_csa.D_i = 1.07
-    RER_PYL_csa.g_syn = 4*nS
-    RER_PYL_csa.e_syn = 0*mV
-    RER_PYL_csa.alpha = 0.94/ms
-    RER_PYL_csa.beta = 0.18/ms
-
-    REL_PYR_csa = Synapses(PYRg, RELg, (CSa + iPYRa_eqs), on_pre = preCS, 
-            method = 'rk4', dt = t_step, name = "REL_PYR_csa")
-    REL_PYR_csa.connect(p = '0.3')
-    REL_PYR_csa.D_i = 1.07
-    REL_PYR_csa.g_syn = 4*nS
-    REL_PYR_csa.e_syn = 0*mV
-    REL_PYR_csa.alpha = 0.94/ms
-    REL_PYR_csa.beta = 0.18/ms
+        REL_PYR_csa = Synapses(PYRg, RELg, (CSa + iPYRa_eqs), on_pre = preCS, 
+                method = 'rk4', dt = t_step, name = "REL_PYR_csa")
+        REL_PYR_csa.connect(p = '0.3')
+        REL_PYR_csa.D_i = 1.07
+        REL_PYR_csa.g_syn = 4*nS
+        REL_PYR_csa.e_syn = 0*mV
+        REL_PYR_csa.alpha = 0.94/ms
+        REL_PYR_csa.beta = 0.18/ms
 
 
-    RER_PYL_csb = Synapses(PYLg, RERg, (CSb + iPYLb_eqs), on_pre = preCS, 
-            method = 'rk4', dt = t_step, name = "RER_PYL_csb")
-    RER_PYL_csb.connect(i = RER_PYL_csa.i[:], j = RER_PYL_csa.j[:])
-    RER_PYL_csb.D_i = 1.07
-    RER_PYL_csb.g_syn = 2*nS
-    RER_PYL_csb.alpha = 1/ms
-    RER_PYL_csb.beta = 0.0067/ms
+        RER_PYL_csb = Synapses(PYLg, RERg, (CSb + iPYLb_eqs), on_pre = preCS, 
+                method = 'rk4', dt = t_step, name = "RER_PYL_csb")
+        RER_PYL_csb.connect(i = RER_PYL_csa.i[:], j = RER_PYL_csa.j[:])
+        RER_PYL_csb.D_i = 1.07
+        RER_PYL_csb.g_syn = 2*nS
+        RER_PYL_csb.alpha = 1/ms
+        RER_PYL_csb.beta = 0.0067/ms
 
-    REL_PYR_csb = Synapses(PYRg, RELg, (CSb + iPYRb_eqs), on_pre = preCS, 
-            method = 'rk4', dt = t_step, name = "REL_PYR_csb")
-    REL_PYR_csb.connect(i = REL_PYR_csa.i[:], j = REL_PYR_csa.j[:])
-    REL_PYR_csb.D_i = 1.07
-    REL_PYR_csb.g_syn = 2*nS
-    REL_PYR_csb.alpha = 1/ms
-    REL_PYR_csb.beta = 0.0067/ms
-
-#-----------------------------------------------------------------
-
-
-
+        REL_PYR_csb = Synapses(PYRg, RELg, (CSb + iPYRb_eqs), on_pre = preCS, 
+                method = 'rk4', dt = t_step, name = "REL_PYR_csb")
+        REL_PYR_csb.connect(i = REL_PYR_csa.i[:], j = REL_PYR_csa.j[:])
+        REL_PYR_csb.D_i = 1.07
+        REL_PYR_csb.g_syn = 2*nS
+        REL_PYR_csb.alpha = 1/ms
+        REL_PYR_csb.beta = 0.0067/ms
 
     #State Monitors
     TCR_volt = StateMonitor(TCRg,'v', record = True)
     TCL_volt = StateMonitor(TCLg,'v', record = True)
+
     PYL_volt = StateMonitor(PYLg, 'v', record = True)
     PYR_volt = StateMonitor(PYRg, 'v', record = True)
+
+    HTCR_volt = StateMonitor(HTCRg,'v', record = True)
+    HTCL_volt = StateMonitor(HTCLg,'v', record = True)
+
+    RTCR_volt = StateMonitor(RTCRg,'v', record = True)
+    RTCL_volt = StateMonitor(RTCLg,'v', record = True)
+
+    FSR_volt = StateMonitor(FSRg,'v', record = True)
+    FSL_volt = StateMonitor(FSLg,'v', record = True)
+
+    RER_volt = StateMonitor(RERg,'v', record = True)
+    REL_volt = StateMonitor(RELg,'v', record = True)
+
+    INR_volt = StateMonitor(INRg,'v', record = True)
+    INL_volt = StateMonitor(INLg,'v', record = True)
+
+    TCR_volt = StateMonitor(TCRg,'v', record = True)
+    TCL_volt = StateMonitor(TCLg,'v', record = True)
+
 
     #Spike Monitors
     TC_spike = SpikeMonitor(TCLg, record = True)
@@ -1389,10 +1398,55 @@ def main():
     print("Setup complete.")
     run(duration)
 
-    np.save("PYL_test.npy", PYL_volt.v)
-    np.save("PYR_test.npy", PYR_volt.v)
-    np.save("TCR_test.npy", TCR_volt.v)
-    np.save("TCL_test.npy", TCL_volt.v)
+    t = int(time.time())
+
+    base = "output/" + str(t) + "/"
+    os.mkdir(base)
+
+    if(connected):
+        stem = base + "connected/"
+    else:
+        stem = base + "unconnected/"
+
+    os.mkdir(stem)
+
+
+    np.save(stem + "PYL_time.npy", PYL_volt.t)
+    np.save(stem + "PYL_volt.npy", PYL_volt.v)
+    np.save(stem + "PYR_time.npy", PYR_volt.t)
+    np.save(stem + "PYR_volt.npy", PYR_volt.v)
+
+    np.save(stem + "INL_time.npy", INL_volt.t)
+    np.save(stem + "INL_volt.npy", INL_volt.v)
+    np.save(stem + "INR_time.npy", INR_volt.t)
+    np.save(stem + "INR_volt.npy", INR_volt.v)
+
+    np.save(stem + "REL_time.npy", REL_volt.t)
+    np.save(stem + "REL_volt.npy", REL_volt.v)
+    np.save(stem + "RER_time.npy", RER_volt.t)
+    np.save(stem + "RER_volt.npy", RER_volt.v)
+
+    np.save(stem + "RTCL_time.npy", RTCL_volt.t)
+    np.save(stem + "RTCL_volt.npy", RTCL_volt.v)
+    np.save(stem + "RTCR_time.npy", RTCR_volt.t)
+    np.save(stem + "RTCR_volt.npy", RTCR_volt.v)
+
+    np.save(stem + "HTCL_time.npy", HTCL_volt.t)
+    np.save(stem + "HTCL_volt.npy", HTCL_volt.v)
+    np.save(stem + "HTCR_time.npy", HTCR_volt.t)
+    np.save(stem + "HTCR_volt.npy", HTCR_volt.v)
+
+    np.save(stem + "TCL_time.npy", TCL_volt.t)
+    np.save(stem + "TCL_volt.npy", TCL_volt.v)
+    np.save(stem + "TCR_time.npy", TCR_volt.t)
+    np.save(stem + "TCR_volt.npy", TCR_volt.v)
+
+    np.save(stem + "FSL_time.npy", FSL_volt.t)
+    np.save(stem + "FSL_volt.npy", FSL_volt.v)
+    np.save(stem + "FSR_time.npy", FSR_volt.t)
+    np.save(stem + "FSR_volt.npy", FSR_volt.v)
+
+
 
 if __name__ == "__main__":
     main()
