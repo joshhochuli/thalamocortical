@@ -2,13 +2,19 @@
 from brian2 import *
 import time
 import os
+import random
+
 def main():
-    
+
     connected = True
 
-    #seed(555)
+    seed(555)
 
-    prefs.codegen.target = 'numpy'
+
+    set_device('cpp_standalone', build_on_run = False)
+    prefs.devices.cpp_standalone.openmp_threads = 4
+
+    #prefs.codegen.target = 'numpy'
     BrianLogger.log_level_debug()
 
     left = []
@@ -64,7 +70,7 @@ def main():
     nFS = 20
 
     #Time constants
-    duration = 0.1*second
+    duration = 2*second
     t_step = 0.02*ms
 
     #tACs Signal Array
@@ -896,64 +902,64 @@ def main():
 
     #->HTCL
     HTCL_HTCL_gj.connect('(x_pre - x_post)**2+(y_pre-y_post)**2 < 4.01*(i < j)' , p = '0.3')
-    HTCL_HTCL_gj.connect(i = HTCL_HTCL_gj.j[:], j = HTCL_HTCL_gj.i[:])
+    #HTCL_HTCL_gj.connect(i = HTCL_HTCL_gj.j[:], j = HTCL_HTCL_gj.i[:])
     HTCL_RTCL_gj.connect('(x_pre*(nHTC-1.0)/(nRTC-1.0)-x_post)**2+(y_pre*(nHTC-1.0)/(nRTC-1.0)-y_post)**2 < 4.01*gjb_pre', p = '0.3')
     HTCL_REL_cs.connect(p = '0.2')
     HTCL_RND_cs.connect()
     #->HTCR
     HTCR_HTCR_gj.connect('(x_pre - x_post)**2+(y_pre-y_post)**2 < 4.01*(i < j)' , p = '0.3')
-    HTCR_HTCR_gj.connect(i = HTCR_HTCR_gj.j[:], j = HTCR_HTCR_gj.i[:])
+    #HTCR_HTCR_gj.connect(i = HTCR_HTCR_gj.j[:], j = HTCR_HTCR_gj.i[:])
     HTCR_RTCR_gj.connect('(x_pre*(nHTC-1.0)/(nRTC-1.0)-x_post)**2+(y_pre*(nHTC-1.0)/(nRTC-1.0)-y_post)**2 < 4.01*gjb_pre', p = '0.3')
     HTCR_RER_cs.connect(p = '0.2')
     HTCR_RND_cs.connect()
 
     #->RTCL
-    RTCL_HTCL_gj.connect(i = HTCL_RTCL_gj.j[:], j = HTCL_RTCL_gj.i[:])
+    #RTCL_HTCL_gj.connect(i = HTCL_RTCL_gj.j[:], j = HTCL_RTCL_gj.i[:])
     RTCL_INL_cs.connect(p = '0.3')
     RTCL_REL_cs.connect(p = '0.2')
     RTCL_PYL_csa.connect(p = '0.23')
-    RTCL_PYL_csb.connect(i = RTCL_PYL_csa.i[:], j = RTCL_PYL_csa.j[:])
+    #RTCL_PYL_csb.connect(i = RTCL_PYL_csa.i[:], j = RTCL_PYL_csa.j[:])
     RTCL_RND_cs.connect()
     #->RTCR
-    RTCR_HTCR_gj.connect(i = HTCR_RTCR_gj.j[:], j = HTCR_RTCR_gj.i[:])
+    #RTCR_HTCR_gj.connect(i = HTCR_RTCR_gj.j[:], j = HTCR_RTCR_gj.i[:])
     RTCR_INR_cs.connect(p = '0.3')
     RTCR_RER_cs.connect(p = '0.2')
     RTCR_PYR_csa.connect(p = '0.23')
-    RTCR_PYR_csb.connect(i = RTCR_PYR_csa.i[:], j = RTCR_PYR_csa.j[:])
+    #RTCR_PYR_csb.connect(i = RTCR_PYR_csa.i[:], j = RTCR_PYR_csa.j[:])
     RTCR_RND_cs.connect()
 
     #->INL
     INL_HTCL_csa.connect(p = '0.3')
-    INL_HTCL_csb.connect(i = INL_HTCL_csa.i[:], j = INL_HTCL_csa.j[:])
+    #INL_HTCL_csb.connect(i = INL_HTCL_csa.i[:], j = INL_HTCL_csa.j[:])
     INL_REL_cs.connect(p = '0.05')
     INL_RND_cs.connect()
     #->INR
     INR_HTCR_csa.connect(p = '0.3')
-    INR_HTCR_csb.connect(i = INR_HTCR_csa.i[:], j = INR_HTCR_csa.j[:])
+    #INR_HTCR_csb.connect(i = INR_HTCR_csa.i[:], j = INR_HTCR_csa.j[:])
     INR_RER_cs.connect(p = '0.05')
     INR_RND_cs.connect()
 
     #->REL
     REL_REL_gj.connect('(x_pre - x_post)**2+(y_pre-y_post )**2 < 4.01*(gjb_pre*i < gjb_post*j)', p = '0.3')
-    REL_REL_gj.connect(i = REL_REL_gj.j[:], j = REL_REL_gj.i[:])
+    #REL_REL_gj.connect(i = REL_REL_gj.j[:], j = REL_REL_gj.i[:])
     REL_HTCL_csa.connect(p = '0.2')
-    REL_HTCL_csb.connect(i = REL_HTCL_csa.i[:], j = REL_HTCL_csa.j[:])
+    #REL_HTCL_csb.connect(i = REL_HTCL_csa.i[:], j = REL_HTCL_csa.j[:])
     REL_RTCL_csa.connect(p = '0.2')
-    REL_RTCL_csb.connect(i = REL_RTCL_csa.i[:], j = REL_RTCL_csa.j[:])
+    #REL_RTCL_csb.connect(i = REL_RTCL_csa.i[:], j = REL_RTCL_csa.j[:])
     REL_REL_cs.connect(p = '0.2')
     REL_PYL_csa.connect(p = '0.3')
-    REL_PYL_csb.connect(i = REL_PYL_csa.i[:], j = REL_PYL_csa.j[:])
+    #REL_PYL_csb.connect(i = REL_PYL_csa.i[:], j = REL_PYL_csa.j[:])
     REL_RND_cs.connect()
     #->RER
     RER_RER_gj.connect('(x_pre - x_post)**2+(y_pre-y_post )**2 < 4.01*(gjb_pre*i < gjb_post*j)', p = '0.3')
-    RER_RER_gj.connect(i = RER_RER_gj.j[:], j = RER_RER_gj.i[:])
+    #RER_RER_gj.connect(i = RER_RER_gj.j[:], j = RER_RER_gj.i[:])
     RER_HTCR_csa.connect(p = '0.2')
-    RER_HTCR_csb.connect(i = RER_HTCR_csa.i[:], j = RER_HTCR_csa.j[:])
+    #RER_HTCR_csb.connect(i = RER_HTCR_csa.i[:], j = RER_HTCR_csa.j[:])
     RER_RTCR_csa.connect(p = '0.2')
-    RER_RTCR_csb.connect(i = RER_RTCR_csa.i[:], j = RER_RTCR_csa.j[:])
+    #RER_RTCR_csb.connect(i = RER_RTCR_csa.i[:], j = RER_RTCR_csa.j[:])
     RER_RER_cs.connect(p = '0.2')
     RER_PYR_csa.connect(p = '0.3')
-    RER_PYR_csb.connect(i = RER_PYR_csa.i[:], j = RER_PYR_csa.j[:])
+    #RER_PYR_csb.connect(i = RER_PYR_csa.i[:], j = RER_PYR_csa.j[:])
     RER_RND_cs.connect()
 
     #->PYL
@@ -969,12 +975,12 @@ def main():
 
     #->FS
     FSL_RTCL_cs.connect(p = '0.02')
-    FSL_PYL_cs.connect(i = PYL_FSL_cs.j[:], j = PYL_FSL_cs.i[:])
+    #FSL_PYL_cs.connect(i = PYL_FSL_cs.j[:], j = PYL_FSL_cs.i[:])
     FSL_FSL_cs.connect('abs(i-j) < nFS/2.0*(i!=j)', p = '0.8')
     FSL_RND.connect()
     #->FS
     FSR_RTCR_cs.connect(p = '0.02')
-    FSR_PYR_cs.connect(i = PYR_FSR_cs.j[:], j = PYR_FSR_cs.i[:])
+    #FSR_PYR_cs.connect(i = PYR_FSR_cs.j[:], j = PYR_FSR_cs.i[:])
     FSR_FSR_cs.connect('abs(i-j) < nFS/2.0*(i!=j)', p = '0.8')
     FSR_RND.connect()
 
@@ -1004,7 +1010,7 @@ def main():
     HTCR_RND_cs.tau = 5*ms
 
     #->RTCL
-    RTCL_HTCL_gj.rgap = 300*Mohm
+    #RTCL_HTCL_gj.rgap = 300*Mohm
     RTCL_INL_cs.D_i = 1.07
     RTCL_INL_cs.g_syn = 3*nS
     RTCL_INL_cs.e_syn = -80*mV
@@ -1020,15 +1026,15 @@ def main():
     RTCL_PYL_csa.e_syn = 0*mV
     RTCL_PYL_csa.alpha = 0.94/ms
     RTCL_PYL_csa.beta = 0.18/ms
-    RTCL_PYL_csb.D_i = 1.07
-    RTCL_PYL_csb.g_syn = 2*nS
-    RTCL_PYL_csb.alpha = 1/ms
-    RTCL_PYL_csb.beta = 0.0067/ms
+    #RTCL_PYL_csb.D_i = 1.07
+    #RTCL_PYL_csb.g_syn = 2*nS
+    #RTCL_PYL_csb.alpha = 1/ms
+    #RTCL_PYL_csb.beta = 0.0067/ms
     RTCL_RND_cs.t_spike = -3*ms
     RTCL_RND_cs.g_spike = 1.5*nS
     RTCL_RND_cs.tau = 5*ms
     #->RTCR
-    RTCR_HTCR_gj.rgap = 300*Mohm
+    #RTCR_HTCR_gj.rgap = 300*Mohm
     RTCR_INR_cs.D_i = 1.07
     RTCR_INR_cs.g_syn = 3*nS
     RTCR_INR_cs.e_syn = -80*mV
@@ -1044,10 +1050,10 @@ def main():
     RTCR_PYR_csa.e_syn = 0*mV
     RTCR_PYR_csa.alpha = 0.94/ms
     RTCR_PYR_csa.beta = 0.18/ms
-    RTCR_PYR_csb.D_i = 1.07
-    RTCR_PYR_csb.g_syn = 2*nS
-    RTCR_PYR_csb.alpha = 1/ms
-    RTCR_PYR_csb.beta = 0.0067/ms
+    #RTCR_PYR_csb.D_i = 1.07
+    #RTCR_PYR_csb.g_syn = 2*nS
+    #RTCR_PYR_csb.alpha = 1/ms
+    #RTCR_PYR_csb.beta = 0.0067/ms
     RTCR_RND_cs.t_spike = -3*ms
     RTCR_RND_cs.g_spike = 1.5*nS
     RTCR_RND_cs.tau = 5*ms
@@ -1058,10 +1064,10 @@ def main():
     INL_HTCL_csa.e_syn = 0*mV
     INL_HTCL_csa.alpha = 0.94/ms
     INL_HTCL_csa.beta = 0.18/ms
-    INL_HTCL_csb.D_i = 1.07
-    INL_HTCL_csb.g_syn = 3*nS
-    INL_HTCL_csb.alpha = 1/ms
-    INL_HTCL_csb.beta = 0.0067/ms
+    #INL_HTCL_csb.D_i = 1.07
+    #INL_HTCL_csb.g_syn = 3*nS
+    #INL_HTCL_csb.alpha = 1/ms
+    #INL_HTCL_csb.beta = 0.0067/ms
     INL_REL_cs.D_i = 1.07
     INL_REL_cs.g_syn = 1*nS
     INL_REL_cs.e_syn = -80*mV
@@ -1076,10 +1082,10 @@ def main():
     INR_HTCR_csa.e_syn = 0*mV
     INR_HTCR_csa.alpha = 0.94/ms
     INR_HTCR_csa.beta = 0.18/ms
-    INR_HTCR_csb.D_i = 1.07
-    INR_HTCR_csb.g_syn = 3*nS
-    INR_HTCR_csb.alpha = 1/ms
-    INR_HTCR_csb.beta = 0.0067/ms
+    #INR_HTCR_csb.D_i = 1.07
+    #INR_HTCR_csb.g_syn = 3*nS
+    #INR_HTCR_csb.alpha = 1/ms
+    #INR_HTCR_csb.beta = 0.0067/ms
     INR_RER_cs.D_i = 1.07
     INR_RER_cs.g_syn = 1*nS
     INR_RER_cs.e_syn = -80*mV
@@ -1096,19 +1102,19 @@ def main():
     REL_HTCL_csa.e_syn = 0*mV
     REL_HTCL_csa.alpha = 0.94/ms
     REL_HTCL_csa.beta = 0.18/ms
-    REL_HTCL_csb.D_i = 1.07 
-    REL_HTCL_csb.g_syn = 2*nS
-    REL_HTCL_csb.alpha = 1/ms
-    REL_HTCL_csb.beta = 0.0067/ms
+    #REL_HTCL_csb.D_i = 1.07 
+    #REL_HTCL_csb.g_syn = 2*nS
+    #REL_HTCL_csb.alpha = 1/ms
+    #REL_HTCL_csb.beta = 0.0067/ms
     REL_RTCL_csa.D_i = 1.07
     REL_RTCL_csa.g_syn = 4*nS
     REL_RTCL_csa.e_syn = 0*mV
     REL_RTCL_csa.alpha = 0.94/ms
     REL_RTCL_csa.beta = 0.18/ms
-    REL_RTCL_csb.D_i = 1.07
-    REL_RTCL_csb.g_syn = 2*nS
-    REL_RTCL_csb.alpha = 1/ms
-    REL_RTCL_csb.beta = 0.0067/ms
+    #REL_RTCL_csb.D_i = 1.07
+    #REL_RTCL_csb.g_syn = 2*nS
+    #REL_RTCL_csb.alpha = 1/ms
+    #REL_RTCL_csb.beta = 0.0067/ms
     REL_REL_cs.D_i = 1.07
     REL_REL_cs.g_syn = 1*nS
     REL_REL_cs.e_syn = -70*mV
@@ -1119,10 +1125,10 @@ def main():
     REL_PYL_csa.e_syn = 0*mV
     REL_PYL_csa.alpha = 0.94/ms
     REL_PYL_csa.beta = 0.18/ms
-    REL_PYL_csb.D_i = 1.07
-    REL_PYL_csb.g_syn = 2*nS
-    REL_PYL_csb.alpha = 1/ms
-    REL_PYL_csb.beta = 0.0067/ms
+    #REL_PYL_csb.D_i = 1.07
+    #REL_PYL_csb.g_syn = 2*nS
+    #REL_PYL_csb.alpha = 1/ms
+    #REL_PYL_csb.beta = 0.0067/ms
     REL_RND_cs.t_spike = -3*ms
     REL_RND_cs.g_spike = 1.5*nS
     REL_RND_cs.tau = 5*ms
@@ -1133,19 +1139,19 @@ def main():
     RER_HTCR_csa.e_syn = 0*mV
     RER_HTCR_csa.alpha = 0.94/ms
     RER_HTCR_csa.beta = 0.18/ms
-    RER_HTCR_csb.D_i = 1.07
-    RER_HTCR_csb.g_syn = 2*nS
-    RER_HTCR_csb.alpha = 1/ms
-    RER_HTCR_csb.beta = 0.0067/ms
+    #RER_HTCR_csb.D_i = 1.07
+    #RER_HTCR_csb.g_syn = 2*nS
+    #RER_HTCR_csb.alpha = 1/ms
+    #RER_HTCR_csb.beta = 0.0067/ms
     RER_RTCR_csa.D_i = 1.07
     RER_RTCR_csa.g_syn = 4*nS
     RER_RTCR_csa.e_syn = 0*mV
     RER_RTCR_csa.alpha = 0.94/ms
     RER_RTCR_csa.beta = 0.18/ms
-    RER_RTCR_csb.D_i = 1.07
-    RER_RTCR_csb.g_syn = 2*nS
-    RER_RTCR_csb.alpha = 1/ms
-    RER_RTCR_csb.beta = 0.0067/ms
+    #RER_RTCR_csb.D_i = 1.07
+    #RER_RTCR_csb.g_syn = 2*nS
+    #RER_RTCR_csb.alpha = 1/ms
+    #RER_RTCR_csb.beta = 0.0067/ms
     RER_RER_cs.D_i = 1.07
     RER_RER_cs.g_syn = 1*nS
     RER_RER_cs.e_syn = -70*mV
@@ -1156,10 +1162,10 @@ def main():
     RER_PYR_csa.e_syn = 0*mV
     RER_PYR_csa.alpha = 0.94/ms
     RER_PYR_csa.beta = 0.18/ms
-    RER_PYR_csb.D_i = 1.07
-    RER_PYR_csb.g_syn = 2*nS
-    RER_PYR_csb.alpha = 1/ms
-    RER_PYR_csb.beta = 0.0067/ms
+    #RER_PYR_csb.D_i = 1.07
+    #RER_PYR_csb.g_syn = 2*nS
+    #RER_PYR_csb.alpha = 1/ms
+    #RER_PYR_csb.beta = 0.0067/ms
     RER_RND_cs.t_spike = -3*ms
     RER_RND_cs.g_spike = 1.5*nS
     RER_RND_cs.tau = 5*ms
@@ -1193,9 +1199,9 @@ def main():
     FSL_RTCL_cs.tau = 2*ms
     FSL_RTCL_cs.e_syn = 0*mV
     FSL_RTCL_cs.g_spike = 0.4*nS
-    FSL_PYL_cs.tau = 2*ms
-    FSL_PYL_cs.e_syn = 0*mV
-    FSL_PYL_cs.g_spike = 0.4*nS
+    #FSL_PYL_cs.tau = 2*ms
+    #FSL_PYL_cs.e_syn = 0*mV
+    #FSL_PYL_cs.g_spike = 0.4*nS
     FSL_FSL_cs.tau = 10*ms
     FSL_FSL_cs.e_syn = -70*mV
     FSL_FSL_cs.g_spike = 0.03*nS
@@ -1205,9 +1211,9 @@ def main():
     FSR_RTCR_cs.tau = 2*ms
     FSR_RTCR_cs.e_syn = 0*mV
     FSR_RTCR_cs.g_spike = 0.4*nS
-    FSR_PYR_cs.tau = 2*ms
-    FSR_PYR_cs.e_syn = 0*mV
-    FSR_PYR_cs.g_spike = 0.4*nS
+    #FSR_PYR_cs.tau = 2*ms
+    #FSR_PYR_cs.e_syn = 0*mV
+    #FSR_PYR_cs.g_spike = 0.4*nS
     FSR_FSR_cs.tau = 10*ms
     FSR_FSR_cs.e_syn = -70*mV
     FSR_FSR_cs.g_spike = 0.03*nS
@@ -1244,20 +1250,23 @@ def main():
         PYR_FSL_cs.e_syn = -70*mV
         PYR_FSL_cs.g_spike = 0.3*nS
 
+        '''
         FSR_PYL_cs = Synapses(PYLg,FSRg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS,
                 method = 'rk4', dt = t_step, name = "FSR_PYL")
         FSR_PYL_cs.connect(i = PYL_FSR_cs.j[:], j = PYL_FSR_cs.i[:])
         FSR_PYL_cs.tau = 2*ms
         FSR_PYL_cs.e_syn = 0*mV
         FSR_PYL_cs.g_spike = 0.4*nS
+        '''
 
+        '''
         FSL_PYR_cs = Synapses(PYRg,FSLg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS,
                 method = 'rk4', dt = t_step, name = "FSL_PYR")
         FSL_PYR_cs.connect(i = PYR_FSL_cs.j[:], j = PYR_FSL_cs.i[:])
         FSL_PYR_cs.tau = 2*ms
         FSL_PYR_cs.e_syn = 0*mV
         FSL_PYR_cs.g_spike = 0.4*nS
-
+        '''
 
         PYL_RTCR_cs = Synapses(RTCRg,PYLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS,
                 method = 'rk4', dt = t_step, name = "PYL_RTCR_cs")
@@ -1274,8 +1283,6 @@ def main():
         PYR_RTCL_cs.e_syn = 0*mV
         PYR_RTCL_cs.g_spike = 0.3*nS
 
-
-
         FSR_RTCL_cs = Synapses(RTCLg,FSRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
                 method = 'rk4', dt = t_step, name = "FSR_RTCL_cs")
         FSR_RTCL_cs.connect(p = '0.02')
@@ -1283,14 +1290,12 @@ def main():
         FSR_RTCL_cs.e_syn = 0*mV
         FSR_RTCL_cs.g_spike = 0.4*nS
 
-
         FSL_RTCR_cs = Synapses(RTCRg,FSLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, 
                 method = 'rk4', dt = t_step, name = "FSL_RTCR_cs")
         FSL_RTCR_cs.connect(p = '0.02')
         FSL_RTCR_cs.tau = 2*ms
         FSL_RTCR_cs.e_syn = 0*mV
         FSL_RTCR_cs.g_spike = 0.4*nS
-
 
         RTCR_PYL_csa = Synapses(PYLg, RTCRg, (CSa + iPYLa_eqs), on_pre = preCS, 
                 method = 'rk4', dt = t_step, name = "RTCR_PYL_csa")
@@ -1310,6 +1315,7 @@ def main():
         RTCL_PYR_csa.alpha = 0.94/ms
         RTCL_PYR_csa.beta = 0.18/ms
 
+        '''
         RTCR_PYL_csb = Synapses(PYLg, RTCRg, (CSb + iPYLb_eqs), on_pre = preCS, 
                 method = 'rk4', dt = t_step, name = "RTCR_PYL_csb")
         RTCR_PYL_csb.connect(i = RTCR_PYL_csa.i[:], j = RTCR_PYL_csa.j[:])
@@ -1317,7 +1323,9 @@ def main():
         RTCR_PYL_csb.g_syn = 2*nS
         RTCR_PYL_csb.alpha = 1/ms
         RTCR_PYL_csb.beta = 0.0067/ms
+        '''
 
+        '''
         RTCL_PYR_csb = Synapses(PYRg, RTCLg, (CSb + iPYRb_eqs), on_pre = preCS, 
                 method = 'rk4', dt = t_step, name = "RTCL_PYR_csb")
         RTCL_PYR_csb.connect(i = RTCL_PYR_csa.i[:], j = RTCL_PYR_csa.j[:])
@@ -1325,6 +1333,7 @@ def main():
         RTCL_PYR_csb.g_syn = 2*nS
         RTCL_PYR_csb.alpha = 1/ms
         RTCL_PYR_csb.beta = 0.0067/ms
+        '''
 
         RER_PYL_csa = Synapses(PYLg, RERg, (CSa + iPYLa_eqs), on_pre = preCS, 
                 method = 'rk4', dt = t_step, name = "RER_PYL_csa")
@@ -1345,6 +1354,7 @@ def main():
         REL_PYR_csa.beta = 0.18/ms
 
 
+        '''
         RER_PYL_csb = Synapses(PYLg, RERg, (CSb + iPYLb_eqs), on_pre = preCS, 
                 method = 'rk4', dt = t_step, name = "RER_PYL_csb")
         RER_PYL_csb.connect(i = RER_PYL_csa.i[:], j = RER_PYL_csa.j[:])
@@ -1352,7 +1362,9 @@ def main():
         RER_PYL_csb.g_syn = 2*nS
         RER_PYL_csb.alpha = 1/ms
         RER_PYL_csb.beta = 0.0067/ms
+        '''
 
+        '''
         REL_PYR_csb = Synapses(PYRg, RELg, (CSb + iPYRb_eqs), on_pre = preCS, 
                 method = 'rk4', dt = t_step, name = "REL_PYR_csb")
         REL_PYR_csb.connect(i = REL_PYR_csa.i[:], j = REL_PYR_csa.j[:])
@@ -1360,6 +1372,7 @@ def main():
         REL_PYR_csb.g_syn = 2*nS
         REL_PYR_csb.alpha = 1/ms
         REL_PYR_csb.beta = 0.0067/ms
+        '''
 
     #State Monitors
     TCR_volt = StateMonitor(TCRg,'v', record = True)
@@ -1398,6 +1411,8 @@ def main():
     print("Setup complete.")
     run(duration)
 
+    device.build(directory = 'build', compile = False, run = False, debug = True)
+
     t = int(time.time())
 
     base = "output/" + str(t) + "/"
@@ -1411,6 +1426,7 @@ def main():
     os.mkdir(stem)
 
 
+    '''
     np.save(stem + "PYL_time.npy", PYL_volt.t)
     np.save(stem + "PYL_volt.npy", PYL_volt.v)
     np.save(stem + "PYR_time.npy", PYR_volt.t)
@@ -1445,6 +1461,7 @@ def main():
     np.save(stem + "FSL_volt.npy", FSL_volt.v)
     np.save(stem + "FSR_time.npy", FSR_volt.t)
     np.save(stem + "FSR_volt.npy", FSR_volt.v)
+    '''
 
 
 
