@@ -9,11 +9,11 @@ def main():
 
     connections = [True,False]
     targets = ['PY', 'HTC', 'RTC', 'FS', 'IN', 'RE', 'TC']
-    #targets = ['PY']
     left_options = [True,False]
 
     heatmaps(targets, connections, left_options, timestamp)
     voltage_traces(targets, connections, left_options, timestamp)
+    voltage_traces(targets, connections, left_options, timestamp, average = True)
 
 def get_output_stem(timestamp):
 
@@ -70,6 +70,7 @@ def heatmaps(targets, connections, left_options, timestamp):
                     output_filename = output_filename + "_left"
                 else:
                     output_filename = output_filename + "_right"
+
 
                 output_filename = output_filename + "_heatmap.pdf"
                 print(output_filename)
@@ -180,11 +181,19 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
         f.suptitle(title, x = 0.6, fontsize = 15)
 
         output_dir = get_output_stem(timestamp) + "/voltage_traces/"
+        if(average):
+            output_dir = output_dir + "averaged/"
         os.makedirs(output_dir, exist_ok = True)
 
-        filename = output_dir + target + "_voltage_trace.pdf"
-        print(filename)
-        f.savefig(filename, pad_inches = 10)
+        output_filename = output_dir + target
+
+        if(average):
+            output_filename = output_filename + "_average"
+
+        output_filename = output_filename + "_voltage_trace.pdf"
+
+        print(output_filename)
+        f.savefig(output_filename, pad_inches = 10)
 
 if __name__ == "__main__":
     main()
