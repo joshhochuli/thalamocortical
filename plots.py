@@ -16,9 +16,10 @@ def main():
     #voltage_traces(targets, connections, left_options, timestamp, average = True)
     #percentage(targets, connections, left_options, timestamp)
     #percentage_overlayed(targets, connections, left_options, timestamp)
-    voltage_traces_overlayed(targets, connections, left_options, timestamp)
+    #voltage_traces_overlayed(targets, connections, left_options, timestamp)
 
 #name directory structure and filename redundantly in case they get separated
+#also makes directories required to write files
 def generate_output_filename(timestamp, target, left, connected, plot_type):
 
     output_dir = "output/figures/" + timestamp + '/' + plot_type + '/'
@@ -68,32 +69,38 @@ def percentage(targets, connections, left_options, timestamp):
                 stem = get_filename_stem(target, timestamp, connected, left)
                 volt_filename = stem + "volt.npy"
 
-                volt = np.load(volt_filename)
+                voltage_data = np.load(volt_filename)
 
                 plot_data = []
 
-                n_neurons = volt.shape[0]
-                total_time = volt.shape[1]
+                n_neurons = voltage_data.shape[0]
+                total_time = volt_data.shape[1]
 
                 for time in range(total_time):
                     s = 0
                     for neuron in range(n_neurons):
-                        if volt[neuron, time] > -0.051:
+
+                        #voltage threshold is completely arbitrary at the moment
+                        if voltage_data[neuron, time] > -0.051:
                             s = s + 1
+
                     plot_data.append(float(s) / n_neurons)
 
-
                 x = range(len(plot_data))
+
+
+                #similar operations for individual plot and grouped plots
                 plt.plot(x,plot_data)
                 ax.plot(x,plot_data)
+
                 plt.ylim([0,1])
                 ax.set_ylim(0,1)
+
                 plt.fill_between(x,0, plot_data)
                 ax.fill_between(x,0, plot_data)
 
                 ind_filename = generate_output_filename(timestamp, target,
                     connected, left, 'percent_activity')
-
 
                 xlabel = "Time (seconds)"
                 ylabel = "% Active Neurons"
@@ -119,6 +126,8 @@ def percentage(targets, connections, left_options, timestamp):
 
                 ax.set(xlabel = xlabel, ylabel = ylabel)
 
+
+                #outer y-axis labels
                 if(j == 0):
                     if(connected):
                         label = "Connected"
@@ -127,6 +136,7 @@ def percentage(targets, connections, left_options, timestamp):
                     ax.annotate(label, xy=(-0.65,0.5), xycoords=("axes fraction",
                         "axes fraction"), weight = "bold")
 
+                #outer x-axis labels
                 if(i == 0):
                     if(left):
                         label = "Left"
@@ -135,16 +145,17 @@ def percentage(targets, connections, left_options, timestamp):
 
                     ax.annotate(label, xy=(0.45,1.1), xycoords=("axes fraction",
                         "axes fraction"), weight = "bold")
+
                 subplot_counter = subplot_counter + 1
                 j = j + 1
             i = i + 1
 
+        #fragile, keep upright
         f.tight_layout(rect=[0.15,0,1,0.9])
 
         title = target
 
         f.suptitle(title, x = 0.6, fontsize = 15)
-
 
         output_dir = "output/figures/" + timestamp
         filename = target
@@ -177,7 +188,8 @@ def heatmaps(targets, connections, left_options, timestamp):
 
                 #normalize plot height
                 num_neurons = data.shape[0]
-                aspect = 20000 / num_neurons
+                magic_size = 20000
+                aspect = magic_size / num_neurons
 
                 #determine maximum magnitude for centering colormap around 0
                 m = 0
@@ -243,10 +255,6 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
                 if ma > target_max:
                     target_max = ma
 
-
-        nrows = len(connections)
-        ncols = len(left_options)
-
         f, axarr = plt.subplots(2,2)
 
         subplot_counter = 1
@@ -264,6 +272,10 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
 
                 time = np.load(time_filename)
                 volt = np.load(volt_filename)
+
+
+                #ax is in group, plt is individual
+                #you can't say 'fig.plt()', but I don't think this is proper
 
                 if average:
 
@@ -344,6 +356,7 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
                 j = j + 1
             i = i + 1
 
+        #fragile, handle with care
         f.tight_layout(rect=[0.15,0,1,0.9])
 
         title = target
@@ -399,14 +412,6 @@ def percentage_overlayed(targets, connections, left_options, timestamp):
 
                 volt = np.load(volt_filename)
 
-                '''
-                ax.plot(time, volt[x], linewidth = 0.5, color = "#3333cc",
-                        alpha = 0.5)
-
-                plt.plot(time, volt[x], linewidth = 0.5)
-                '''
-
-
                 plot_data = []
 
                 n_neurons = volt.shape[0]
@@ -415,6 +420,8 @@ def percentage_overlayed(targets, connections, left_options, timestamp):
                 for time in range(total_time):
                     s = 0
                     for neuron in range(n_neurons):
+
+                        #threshold is currently arbitrary
                         if volt[neuron, time] > -0.051:
                             s = s + 1
                     plot_data.append(float(s) / n_neurons)
@@ -443,6 +450,7 @@ def percentage_overlayed(targets, connections, left_options, timestamp):
 
             i = i + 1
 
+        #fragile, be gentle
         f.tight_layout(rect=[0.15,0,1,0.9])
 
         title = target
@@ -566,6 +574,7 @@ def voltage_traces_overlayed(targets, connections, left_options, timestamp, aver
                 subplot_counter = subplot_counter + 1
             i = i + 1
 
+        #still fragile
         f.tight_layout(rect=[0.15,0,1,0.9])
 
         title = target
