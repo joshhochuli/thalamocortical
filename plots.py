@@ -143,6 +143,7 @@ def get_filename_stem(target, timestamp, connected, is_left):
 def voltage_traces(targets, connections, left_options, timestamp, average = False):
 
     plt.rcParams.update({'font.size':6})
+    fs = 12
 
     for target in targets:
 
@@ -158,6 +159,7 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
 
             for left in left_options:
 
+                ind_fig = plt.figure(figsize = (7,5))
                 ax = axarr[i,j]
                 stem = get_filename_stem(target, timestamp, connected, left)
                 time_filename = stem + "time.npy"
@@ -182,14 +184,45 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
 
 
                     ax.plot(time, values, linewidth = 0.5, color = "#3333cc")
+                    plt.plot(time, values, linewidth = 1)
+
+                    ind_filename = generate_output_filename(timestamp, target,
+                        connected, left, 'average_voltage_trace')
 
                 else:
                     for x in range(volt.shape[0]):
                         ax.plot(time, volt[x], linewidth = 0.5, color = "#3333cc",
                                 alpha = 0.5)
 
+                        plt.plot(time, volt[x], linewidth = 0.5)
+
+                    ind_filename = generate_output_filename(timestamp, target,
+                        connected, left, 'voltage_trace')
+
+
                 xlabel = "Time (seconds)"
                 ylabel = "Voltage (volts)"
+
+                plt.xlabel(xlabel, fontsize = fs)
+                plt.ylabel(ylabel, fontsize = fs)
+
+                #individual plot title
+                title = target
+                if(connected):
+                    title = title + " (Connected)"
+                else:
+                    title = title + " (Not Connected)"
+                if(left):
+                    title = title + " (Left)"
+                else:
+                    title = title + " (Right)"
+                if(average):
+                    title = title + " Average across %d neurons" % volt.shape[0]
+
+                plt.title(title, fontsize = fs)
+                print(ind_filename)
+                ind_fig.savefig(ind_filename)
+                plt.close(ind_fig)
 
                 ax.set(xlabel = xlabel, ylabel = ylabel)
 
@@ -232,6 +265,7 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
             output_dir = output_dir + "/voltage_trace/"
             filename = filename + "_voltage_trace.pdf"
 
+        output_dir = output_dir + "grouped/"
         os.makedirs(output_dir, exist_ok = True)
 
         output_filename = output_dir + filename
