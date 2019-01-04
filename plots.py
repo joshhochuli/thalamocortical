@@ -12,9 +12,10 @@ def main():
     left_options = [True,False]
 
     #heatmaps(targets, connections, left_options, timestamp)
-    voltage_traces(targets, connections, left_options, timestamp)
+    #voltage_traces(targets, connections, left_options, timestamp)
     #voltage_traces(targets, connections, left_options, timestamp, average = True)
     #percentage(targets, connections, left_options, timestamp)
+    percentage_overlayed(targets, connections, left_options, timestamp)
 
 #name directory structure and filename redundantly in case they get separated
 def generate_output_filename(timestamp, target, left, connected, plot_type):
@@ -170,47 +171,6 @@ def percentage(targets, connections, left_options, timestamp):
         plt.close()
 
 
-    '''
-    for target in targets:
-        for connected in connections:
-            for left in left_options:
-
-                output_filename = generate_output_filename(timestamp, target,
-                        left, connected, 'percent_active')
-
-                print(output_filename)
-
-                stem = get_filename_stem(target, timestamp, connected, left)
-                filename = stem + 'volt.npy'
-
-
-                data = np.load(filename)
-
-                #data = data[:,5000:]
-
-                plot_data = []
-
-                n_neurons = data.shape[0]
-                total_time = data.shape[1]
-
-                for time in range(total_time):
-                    s = 0
-                    for neuron in range(n_neurons):
-                        if data[neuron, time] > 0:
-                            s = s + 1
-                    plot_data.append(float(s) / n_neurons)
-
-
-                #plt.bar(range(len(plot_data)),plot_data, align = 'edge', width = 1)
-                x = range(len(plot_data))
-                plt.plot(x,plot_data)
-                plt.fill_between(x,0, plot_data)
-
-                plt.savefig(output_filename)
-                plt.close()
-    '''
-
-
 def heatmaps(targets, connections, left_options, timestamp):
 
     for target in targets:
@@ -313,8 +273,6 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
 
                 time = np.load(time_filename)
                 volt = np.load(volt_filename)
-
-                subplot_code = (100 * nrows) + (10 * ncols) + subplot_counter
 
                 if average:
 
@@ -423,6 +381,100 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
 
         f.savefig(output_filename, pad_inches = 10)
         plt.close()
+
+def percentage_overlayed(targets, connections, left_options, timestamp):
+
+    plt.rcParams.update({'font.size':6})
+    fs = 12
+
+    for target in targets:
+
+        f, axarr = plt.subplots(2,1)
+
+        subplot_counter = 1
+        i = 0
+        for connected in connections:
+
+            for left in left_options:
+
+                if(left):
+                    label = "Left"
+                else:
+                    label = "Right"
+
+                ind_fig = plt.figure(figsize = (7,5))
+                ax = axarr[i]
+                stem = get_filename_stem(target, timestamp, connected, left)
+                volt_filename = stem + "volt.npy"
+
+                volt = np.load(volt_filename)
+
+                '''
+                ax.plot(time, volt[x], linewidth = 0.5, color = "#3333cc",
+                        alpha = 0.5)
+
+                plt.plot(time, volt[x], linewidth = 0.5)
+                '''
+
+
+                plot_data = []
+
+                n_neurons = volt.shape[0]
+                total_time = volt.shape[1]
+
+                for time in range(total_time):
+                    s = 0
+                    for neuron in range(n_neurons):
+                        if volt[neuron, time] > -0.051:
+                            s = s + 1
+                    plot_data.append(float(s) / n_neurons)
+
+
+                x = range(len(plot_data))
+                ax.plot(x,plot_data, label = label)
+                ax.set_ylim(-0.1,1.1)
+                ax.fill_between(x,0, plot_data, alpha = 0.5)
+
+
+
+                xlabel = "Time (milliseconds)"
+                ylabel = "% Active Neurons"
+
+                ax.set(xlabel = xlabel, ylabel = ylabel)
+
+                if(connected):
+                    label = "Connected"
+                else:
+                    label = "Not Connected"
+                ax.annotate(label, xy=(-0.25,0.5), xycoords=("axes fraction",
+                    "axes fraction"), weight = "bold")
+
+                ax.legend(loc = 1)
+
+            i = i + 1
+
+        f.tight_layout(rect=[0.15,0,1,0.9])
+
+        title = target
+
+        f.suptitle(title, x = 0.6, fontsize = 15)
+
+        output_dir = "output/figures/" + timestamp
+        filename = target
+        output_dir = output_dir + "/percent_activity/"
+        filename = filename + "_percent_activity.pdf"
+
+        output_dir = output_dir + "grouped/"
+        os.makedirs(output_dir, exist_ok = True)
+
+        output_filename = output_dir + filename
+
+        print(output_filename)
+
+        f.savefig(output_filename, pad_inches = 10)
+        plt.close(f)
+
+
 
 if __name__ == "__main__":
     main()
