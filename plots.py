@@ -5,7 +5,7 @@ import os
 
 def main():
 
-    timestamp = "1545167676"
+    timestamp = "test"
 
     connections = [True,False]
     targets = ['PY', 'HTC', 'RTC', 'FS', 'IN', 'RE', 'TC']
@@ -14,10 +14,74 @@ def main():
     heatmaps(targets, connections, left_options, timestamp)
     voltage_traces(targets, connections, left_options, timestamp)
     voltage_traces(targets, connections, left_options, timestamp, average = True)
+    percentage(targets, connections, left_options, timestamp)
 
-def get_output_stem(timestamp):
+#name directory structure and filename redundantly in case they get separated
+def generate_output_filename(timestamp, target, left, connected, plot_type):
 
-    return "output/figures/" + timestamp
+    output_dir = "output/figures/" + timestamp + '/' + plot_type + '/'
+    filename = target
+
+    if(connected):
+        output_dir = output_dir + "connected/"
+        filename = filename + "_connected"
+    else:
+        output_dir = output_dir + "unconnected/"
+        filename = filename + "_unconnected"
+
+    if(left):
+        output_dir = output_dir + "left/"
+        filename = filename + "_left_"
+    else:
+        output_dir = output_dir + "right/"
+        filename = filename + "_right_"
+
+    filename = filename + plot_type + ".pdf"
+
+    os.makedirs(output_dir, exist_ok = True)
+
+    return output_dir + filename
+
+def percentage(targets, connections, left_options, timestamp):
+
+    for target in targets:
+        for connected in connections:
+            for left in left_options:
+
+                output_filename = generate_output_filename(timestamp, target,
+                        left, connected, 'percent_active')
+
+                print(output_filename)
+
+                stem = get_filename_stem(target, timestamp, connected, left)
+                filename = stem + 'volt.npy'
+
+
+                data = np.load(filename)
+
+                #data = data[:,5000:]
+
+                plot_data = []
+
+                n_neurons = data.shape[0]
+                total_time = data.shape[1]
+
+                for time in range(total_time):
+                    s = 0
+                    for neuron in range(n_neurons):
+                        if data[neuron, time] > 0:
+                            s = s + 1
+                    plot_data.append(float(s) / n_neurons)
+
+
+                #plt.bar(range(len(plot_data)),plot_data, align = 'edge', width = 1)
+                x = range(len(plot_data))
+                plt.plot(x,plot_data)
+                plt.fill_between(x,0, plot_data)
+
+                plt.savefig(output_filename)
+                plt.close()
+
 
 def heatmaps(targets, connections, left_options, timestamp):
 
@@ -47,33 +111,11 @@ def heatmaps(targets, connections, left_options, timestamp):
                 plt.xlabel('Time')
                 plt.ylabel('Neuron index')
 
-                output_dir = get_output_stem(timestamp) + "/heatmaps/"
-                if(connected):
-                    output_dir = output_dir + "connected/"
-                else:
-                    output_dir = output_dir + "unconnected/"
+                output_filename = generate_output_filename(timestamp, target,
+                        connected, left, 'heatmap')
 
-                if(left):
-                    output_dir = output_dir + "left/"
-                else:
-                    output_dir = output_dir + "right/"
-
-                os.makedirs(output_dir, exist_ok = True)
-
-                output_filename = output_dir + target
-
-                if(connected):
-                    output_filename = output_filename + "_connected"
-                else:
-                    output_filename = output_filename + "_unconnected"
-                if(left):
-                    output_filename = output_filename + "_left"
-                else:
-                    output_filename = output_filename + "_right"
-
-
-                output_filename = output_filename + "_heatmap.pdf"
                 print(output_filename)
+
                 fig.savefig(output_filename)
                 plt.close()
 
@@ -180,20 +222,24 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
 
         f.suptitle(title, x = 0.6, fontsize = 15)
 
-        output_dir = get_output_stem(timestamp) + "/voltage_traces/"
+
+        output_dir = "output/figures/" + timestamp
+        filename = target
         if(average):
-            output_dir = output_dir + "averaged/"
+            output_dir = output_dir + "/average_voltage_trace/"
+            filename = filename + "_average_voltage_trace.pdf"
+        else:
+            output_dir = output_dir + "/voltage_trace/"
+            filename = filename + "_voltage_trace.pdf"
+
         os.makedirs(output_dir, exist_ok = True)
 
-        output_filename = output_dir + target
-
-        if(average):
-            output_filename = output_filename + "_average"
-
-        output_filename = output_filename + "_voltage_trace.pdf"
+        output_filename = output_dir + filename
 
         print(output_filename)
+
         f.savefig(output_filename, pad_inches = 10)
+        plt.close()
 
 if __name__ == "__main__":
     main()
