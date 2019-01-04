@@ -12,9 +12,9 @@ def main():
     left_options = [True,False]
 
     #heatmaps(targets, connections, left_options, timestamp)
-    #voltage_traces(targets, connections, left_options, timestamp)
+    voltage_traces(targets, connections, left_options, timestamp)
     #voltage_traces(targets, connections, left_options, timestamp, average = True)
-    percentage(targets, connections, left_options, timestamp)
+    #percentage(targets, connections, left_options, timestamp)
 
 #name directory structure and filename redundantly in case they get separated
 def generate_output_filename(timestamp, target, left, connected, plot_type):
@@ -275,6 +275,24 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
 
     for target in targets:
 
+        #find axis limits
+        #don't think it's possible to calculate on the fly
+        target_min = 100000
+        target_max = -100000
+
+        for connected in connections:
+            for left in left_options:
+                stem = get_filename_stem(target, timestamp, connected, left)
+                volt_filename = stem + "volt.npy"
+                volt = np.load(volt_filename)
+                mi = volt.min()
+                ma = volt.max()
+                if mi < target_min:
+                    target_min = mi
+                if ma > target_max:
+                    target_max = ma
+
+
         nrows = len(connections)
         ncols = len(left_options)
 
@@ -353,6 +371,9 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
                 plt.close(ind_fig)
 
                 ax.set(xlabel = xlabel, ylabel = ylabel)
+
+                buff = (target_max - target_min) * 0.1
+                ax.set_ylim(target_min - buff, target_max + buff)
 
                 if(j == 0):
                     if(connected):
