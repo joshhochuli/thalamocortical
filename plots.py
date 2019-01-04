@@ -15,7 +15,8 @@ def main():
     #voltage_traces(targets, connections, left_options, timestamp)
     #voltage_traces(targets, connections, left_options, timestamp, average = True)
     #percentage(targets, connections, left_options, timestamp)
-    percentage_overlayed(targets, connections, left_options, timestamp)
+    #percentage_overlayed(targets, connections, left_options, timestamp)
+    voltage_traces_overlayed(targets, connections, left_options, timestamp)
 
 #name directory structure and filename redundantly in case they get separated
 def generate_output_filename(timestamp, target, left, connected, plot_type):
@@ -68,16 +69,6 @@ def percentage(targets, connections, left_options, timestamp):
                 volt_filename = stem + "volt.npy"
 
                 volt = np.load(volt_filename)
-
-                subplot_code = (100 * nrows) + (10 * ncols) + subplot_counter
-
-                '''
-                ax.plot(time, volt[x], linewidth = 0.5, color = "#3333cc",
-                        alpha = 0.5)
-
-                plt.plot(time, volt[x], linewidth = 0.5)
-                '''
-
 
                 plot_data = []
 
@@ -158,7 +149,7 @@ def percentage(targets, connections, left_options, timestamp):
         output_dir = "output/figures/" + timestamp
         filename = target
         output_dir = output_dir + "/percent_activity/"
-        filename = filename + "_percent_activity.pdf"
+        filename = filename + "_grouped_percent_activity.pdf"
 
         output_dir = output_dir + "grouped/"
         os.makedirs(output_dir, exist_ok = True)
@@ -367,10 +358,10 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
         filename = target
         if(average):
             output_dir = output_dir + "/average_voltage_trace/"
-            filename = filename + "_average_voltage_trace.pdf"
+            filename = filename + "_grouped_average_voltage_trace.pdf"
         else:
             output_dir = output_dir + "/voltage_trace/"
-            filename = filename + "_voltage_trace.pdf"
+            filename = filename + "_grouped_voltage_trace.pdf"
 
         output_dir = output_dir + "grouped/"
         os.makedirs(output_dir, exist_ok = True)
@@ -402,7 +393,6 @@ def percentage_overlayed(targets, connections, left_options, timestamp):
                 else:
                     label = "Right"
 
-                ind_fig = plt.figure(figsize = (7,5))
                 ax = axarr[i]
                 stem = get_filename_stem(target, timestamp, connected, left)
                 volt_filename = stem + "volt.npy"
@@ -462,9 +452,9 @@ def percentage_overlayed(targets, connections, left_options, timestamp):
         output_dir = "output/figures/" + timestamp
         filename = target
         output_dir = output_dir + "/percent_activity/"
-        filename = filename + "_percent_activity.pdf"
+        filename = filename + "_overlayed_percent_activity.pdf"
 
-        output_dir = output_dir + "grouped/"
+        output_dir = output_dir + "overlayed/"
         os.makedirs(output_dir, exist_ok = True)
 
         output_filename = output_dir + filename
@@ -473,6 +463,137 @@ def percentage_overlayed(targets, connections, left_options, timestamp):
 
         f.savefig(output_filename, pad_inches = 10)
         plt.close(f)
+
+
+def voltage_traces_overlayed(targets, connections, left_options, timestamp, average = False):
+
+    plt.rcParams.update({'font.size':6})
+    fs = 12
+
+    for target in targets:
+
+        #find axis limits
+        #don't think it's possible to calculate on the fly
+        target_min = 100000
+        target_max = -100000
+
+        for connected in connections:
+            for left in left_options:
+                stem = get_filename_stem(target, timestamp, connected, left)
+                volt_filename = stem + "volt.npy"
+                volt = np.load(volt_filename)
+                mi = volt.min()
+                ma = volt.max()
+                if mi < target_min:
+                    target_min = mi
+                if ma > target_max:
+                    target_max = ma
+
+
+        nrows = len(connections)
+        ncols = len(left_options)
+
+        f, axarr = plt.subplots(2,1)
+
+        subplot_counter = 1
+        i = 0
+        for connected in connections:
+
+            for left in left_options:
+
+                if(left):
+                    col = 'red'
+                    label = "Left"
+                else:
+                    label = "Right"
+                    col = 'blue'
+
+                ax = axarr[i]
+                stem = get_filename_stem(target, timestamp, connected, left)
+                time_filename = stem + "time.npy"
+                volt_filename = stem + "volt.npy"
+
+                time = np.load(time_filename)
+                volt = np.load(volt_filename)
+
+                if average:
+
+                    num_neurons = volt.shape[0]
+                    num_points = volt.shape[1]
+                    values = np.empty(shape = (volt.shape[1]))
+                    for k in range(num_points):
+
+                        s = 0
+                        for l in range(num_neurons):
+                            s = s + volt[l,k]
+                        values[k] = s / num_neurons
+
+
+                    ax.plot(time, values, linewidth = 0.5, color = col, label =
+                            label)
+
+                else:
+                    for x in range(volt.shape[0]):
+
+                        #only label first line drawn to avoid redundant labels
+                        #surely a better option exists
+                        if x == 0:
+                            ax.plot(time, volt[x], linewidth = 0.5,
+                                    alpha = 0.5, color = col, label = label)
+                        else:
+                            ax.plot(time, volt[x], linewidth = 0.5,
+                                    alpha = 0.5, color = col)
+
+
+
+                xlabel = "Time (seconds)"
+                ylabel = "Voltage (volts)"
+
+                ax.set(xlabel = xlabel, ylabel = ylabel)
+
+                buff = (target_max - target_min) * 0.1
+                ax.set_ylim(target_min - buff, target_max + buff)
+
+                ax.legend(loc = 1)
+
+                if(connected):
+                    label = "Connected"
+                else:
+                    label = "Not Connected"
+                ax.annotate(label, xy=(-0.3,0.5), xycoords=("axes fraction",
+                    "axes fraction"), weight = "bold")
+
+                subplot_counter = subplot_counter + 1
+            i = i + 1
+
+        f.tight_layout(rect=[0.15,0,1,0.9])
+
+        title = target
+
+        if(average):
+            title = title + " (Average across %d neurons)" % volt.shape[0]
+
+        f.suptitle(title, x = 0.6, fontsize = 15)
+
+
+        output_dir = "output/figures/" + timestamp
+        filename = target
+        if(average):
+            output_dir = output_dir + "/average_voltage_trace/"
+            filename = filename + "_overlayed_average_voltage_trace.png"
+        else:
+            output_dir = output_dir + "/voltage_trace/"
+            filename = filename + "_overlayed_voltage_trace.png"
+
+        output_dir = output_dir + "overlayed/"
+        os.makedirs(output_dir, exist_ok = True)
+
+        output_filename = output_dir + filename
+
+        print(output_filename)
+
+        f.savefig(output_filename, pad_inches = 10)
+        plt.close()
 
 
 
