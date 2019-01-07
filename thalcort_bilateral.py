@@ -2,13 +2,21 @@
 from brian2 import *
 import time
 import os
+import argparse
 def main():
-    
-    connected = True
 
-    #seed(555)
+    timestamp = str(int(time.time()))
 
-    prefs.codegen.target = 'numpy'
+    run_network(timestamp);
+    run_network(timestamp, connected = False)
+
+    print("Output written to directory: %s" % timestamp)
+
+def run_network(timestamp, connected = True):
+
+    seed(555)
+
+    prefs.codegen.target = 'cython'
     BrianLogger.log_level_debug()
 
     left = []
@@ -64,8 +72,11 @@ def main():
     nFS = 20
 
     #Time constants
-    duration = 0.1*second
+    duration = 2*second
     t_step = 0.02*ms
+
+    print(t_step)
+    exit(1)
 
     #tACs Signal Array
     t_d = t_step*numpy.arange(duration/t_step)/second
@@ -1398,10 +1409,10 @@ def main():
     print("Setup complete.")
     run(duration)
 
-    t = int(time.time())
 
-    base = "output/" + str(t) + "/"
-    os.mkdir(base)
+    base = "output/" + timestamp + "/"
+    if not(os.path.isdir(base)):
+        os.mkdir(base)
 
     if(connected):
         stem = base + "connected/"
