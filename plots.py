@@ -7,32 +7,28 @@ def main():
 
     timestamp = "2s"
 
-    connections = [True,False]
+    comparison = ["connected","unconnected"]
     targets = ['PY', 'HTC', 'RTC', 'FS', 'IN', 'RE', 'TC']
     left_options = [True,False]
 
-    heatmaps(targets, connections, left_options, timestamp)
-    voltage_traces(targets, connections, left_options, timestamp)
-    voltage_traces(targets, connections, left_options, timestamp, average = True)
-    percentage(targets, connections, left_options, timestamp)
-    percentage_overlayed(targets, connections, left_options, timestamp)
-    voltage_traces_overlayed(targets, connections, left_options, timestamp)
-    voltage_traces_overlayed(targets, connections, left_options, timestamp,
+    heatmaps(targets, comparison, left_options, timestamp)
+    voltage_traces(targets, comparison, left_options, timestamp)
+    voltage_traces(targets, comparison, left_options, timestamp, average = True)
+    percentage(targets, comparison, left_options, timestamp)
+    percentage_overlayed(targets, comparison, left_options, timestamp)
+    voltage_traces_overlayed(targets, comparison, left_options, timestamp)
+    voltage_traces_overlayed(targets, comparison, left_options, timestamp,
             average = True)
 
 #name directory structure and filename redundantly in case they get separated
 #also makes directories required to write files
-def generate_output_filename(timestamp, target, left, connected, plot_type):
+def generate_output_filename(timestamp, target, left, choice, plot_type):
 
     output_dir = "output/figures/" + timestamp + '/' + plot_type + '/'
     filename = target
 
-    if(connected):
-        output_dir = output_dir + "connected/"
-        filename = filename + "_connected"
-    else:
-        output_dir = output_dir + "unconnected/"
-        filename = filename + "_unconnected"
+    output_dir = output_dir + choice +"/"
+    filename = filename + "_" + choice
 
     if(left):
         output_dir = output_dir + "left/"
@@ -47,28 +43,25 @@ def generate_output_filename(timestamp, target, left, connected, plot_type):
 
     return output_dir + filename
 
-def percentage(targets, connections, left_options, timestamp):
+def percentage(targets, comparison, left_options, timestamp):
 
     plt.rcParams.update({'font.size':6})
     fs = 12
 
     for target in targets:
 
-        nrows = len(connections)
-        ncols = len(left_options)
-
         f, axarr = plt.subplots(2,2)
 
         subplot_counter = 1
         i = 0
-        for connected in connections:
+        for choice in comparison:
             j = 0
 
             for left in left_options:
 
                 ind_fig = plt.figure(figsize = (7,5))
                 ax = axarr[i,j]
-                stem = get_filename_stem(target, timestamp, connected, left)
+                stem = get_filename_stem(target, timestamp, choice, left)
                 volt_filename = stem + "volt.npy"
                 time_filename = stem + "time.npy"
 
@@ -104,7 +97,7 @@ def percentage(targets, connections, left_options, timestamp):
                 ax.fill_between(time_data,0, plot_data)
 
                 ind_filename = generate_output_filename(timestamp, target,
-                    connected, left, 'percent_activity')
+                    left, choice, 'percent_activity')
 
                 xlabel = "Time (seconds)"
                 ylabel = "% Active Neurons"
@@ -114,10 +107,7 @@ def percentage(targets, connections, left_options, timestamp):
 
                 #individual plot title
                 title = target
-                if(connected):
-                    title = title + " (Connected)"
-                else:
-                    title = title + " (Not Connected)"
+                title = title + " (%s)" % choice.title()
                 if(left):
                     title = title + " (Left)"
                 else:
@@ -133,10 +123,8 @@ def percentage(targets, connections, left_options, timestamp):
 
                 #outer y-axis labels
                 if(j == 0):
-                    if(connected):
-                        label = "Connected"
-                    else:
-                        label = "Not Connected"
+                    label = choice.title()
+
                     ax.annotate(label, xy=(-0.65,0.5), xycoords=("axes fraction",
                         "axes fraction"), weight = "bold")
 
@@ -177,15 +165,15 @@ def percentage(targets, connections, left_options, timestamp):
         plt.close()
 
 
-def heatmaps(targets, connections, left_options, timestamp):
+def heatmaps(targets, comparison, left_options, timestamp):
 
     for target in targets:
-        for connected in connections:
+        for choice in comparison:
             for left in left_options:
 
                 fig = plt.figure(figsize = (11, 8.5))
 
-                stem = get_filename_stem(target, timestamp, connected, left)
+                stem = get_filename_stem(target, timestamp, choice, left)
                 volt_filename = stem + "volt.npy"
                 time_filename = stem + "time.npy"
 
@@ -208,17 +196,20 @@ def heatmaps(targets, connections, left_options, timestamp):
                 plt.xlabel('Time (seconds)')
                 plt.ylabel('Neuron index')
 
+                title = "%s (%s)" % (target, choice.title())
+                plt.title(title)
+
+                #shifty indexing to get last time value to be labeled
                 pos = np.arange(0,voltage_data.shape[1], 9999)
                 lab = []
                 for val in pos:
-                    print(val)
                     lab.append("%.1f" % time_data[val])
 
 
                 plt.xticks(pos, lab)
 
                 output_filename = generate_output_filename(timestamp, target,
-                        connected, left, 'heatmap')
+                        left, choice, 'heatmap')
 
                 print(output_filename)
 
@@ -230,12 +221,9 @@ def heatmaps(targets, connections, left_options, timestamp):
 
 
 
-def get_filename_stem(target, timestamp, connected, is_left):
+def get_filename_stem(target, timestamp, choice, is_left):
 
-    if(connected):
-        stem = "output/" + timestamp + "/connected/"
-    else:
-        stem = "output/" + timestamp + "/unconnected/"
+    stem = "output/" + timestamp + "/%s/" % choice
 
     if(is_left):
         name = target + "L_"
@@ -244,9 +232,7 @@ def get_filename_stem(target, timestamp, connected, is_left):
 
     return stem + name
 
-
-
-def voltage_traces(targets, connections, left_options, timestamp, average = False):
+def voltage_traces(targets, comparison, left_options, timestamp, average = False):
 
     plt.rcParams.update({'font.size':6})
     fs = 12
@@ -258,9 +244,9 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
         target_min = 100000
         target_max = -100000
 
-        for connected in connections:
+        for choice in comparison:
             for left in left_options:
-                stem = get_filename_stem(target, timestamp, connected, left)
+                stem = get_filename_stem(target, timestamp, choice, left)
                 volt_filename = stem + "volt.npy"
                 volt = np.load(volt_filename)
                 mi = volt.min()
@@ -274,14 +260,14 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
 
         subplot_counter = 1
         i = 0
-        for connected in connections:
+        for choice in comparison:
             j = 0
 
             for left in left_options:
 
                 ind_fig = plt.figure(figsize = (7,5))
                 ax = axarr[i,j]
-                stem = get_filename_stem(target, timestamp, connected, left)
+                stem = get_filename_stem(target, timestamp, choice, left)
                 time_filename = stem + "time.npy"
                 volt_filename = stem + "volt.npy"
 
@@ -309,17 +295,17 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
                     plt.plot(time, values, linewidth = 1)
 
                     ind_filename = generate_output_filename(timestamp, target,
-                        connected, left, 'average_voltage_trace')
+                        left, choice, 'average_voltage_trace')
 
                 else:
                     for x in range(volt.shape[0]):
                         ax.plot(time, volt[x], linewidth = 0.5, color = "#3333cc",
                                 alpha = 0.5)
 
-                        plt.plot(time, volt[x], linewidth = 0.5)
+                        plt.plot(time, volt[x], linewidth = 0.5, alpha = 0.5)
 
                     ind_filename = generate_output_filename(timestamp, target,
-                        connected, left, 'voltage_trace')
+                        left, choice, 'voltage_trace')
 
 
                 xlabel = "Time (seconds)"
@@ -330,11 +316,11 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
 
                 #individual plot title
                 title = target
-                if(connected):
-                    title = title + " (Connected)"
-                else:
-                    title = title + " (Not Connected)"
+
+                title = title + " (%s)" % choice.title()
+
                 if(left):
+
                     title = title + " (Left)"
                 else:
                     title = title + " (Right)"
@@ -352,10 +338,8 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
                 ax.set_ylim(target_min - buff, target_max + buff)
 
                 if(j == 0):
-                    if(connected):
-                        label = "Connected"
-                    else:
-                        label = "Not Connected"
+                    label = choice.title()
+
                     ax.annotate(label, xy=(-0.65,0.5), xycoords=("axes fraction",
                         "axes fraction"), weight = "bold")
 
@@ -401,7 +385,7 @@ def voltage_traces(targets, connections, left_options, timestamp, average = Fals
         f.savefig(output_filename, pad_inches = 10)
         plt.close()
 
-def percentage_overlayed(targets, connections, left_options, timestamp):
+def percentage_overlayed(targets, comparison, left_options, timestamp):
 
     plt.rcParams.update({'font.size':6})
     fs = 12
@@ -412,7 +396,7 @@ def percentage_overlayed(targets, connections, left_options, timestamp):
 
         subplot_counter = 1
         i = 0
-        for connected in connections:
+        for choice in comparison:
 
             for left in left_options:
 
@@ -422,7 +406,7 @@ def percentage_overlayed(targets, connections, left_options, timestamp):
                     label = "Right"
 
                 ax = axarr[i]
-                stem = get_filename_stem(target, timestamp, connected, left)
+                stem = get_filename_stem(target, timestamp, choice, left)
                 volt_filename = stem + "volt.npy"
                 time_filename = stem + "time.npy"
 
@@ -456,10 +440,8 @@ def percentage_overlayed(targets, connections, left_options, timestamp):
 
                 ax.set(xlabel = xlabel, ylabel = ylabel)
 
-                if(connected):
-                    label = "Connected"
-                else:
-                    label = "Not Connected"
+                label = choice.title()
+
                 ax.annotate(label, xy=(-0.25,0.5), xycoords=("axes fraction",
                     "axes fraction"), weight = "bold")
 
@@ -490,21 +472,19 @@ def percentage_overlayed(targets, connections, left_options, timestamp):
         plt.close(f)
 
 
-def voltage_traces_overlayed(targets, connections, left_options, timestamp, average = False):
+def voltage_traces_overlayed(targets, comparison, left_options, timestamp, average = False):
 
     plt.rcParams.update({'font.size':6})
     fs = 12
 
     for target in targets:
-        nrows = len(connections)
-        ncols = len(left_options)
 
         f, axarr = plt.subplots(2,1)
 
         subplot_counter = 1
         i = 0
 
-        for connected in connections:
+        for choice in comparison:
 
             #find axis limits
             #don't think it's possible to calculate on the fly
@@ -512,7 +492,7 @@ def voltage_traces_overlayed(targets, connections, left_options, timestamp, aver
             target_max = -100000
 
             for left in left_options:
-                stem = get_filename_stem(target, timestamp, connected, left)
+                stem = get_filename_stem(target, timestamp, choice, left)
                 volt_filename = stem + "volt.npy"
                 volt = np.load(volt_filename)
                 volt = volt[:,5000:]
@@ -548,7 +528,7 @@ def voltage_traces_overlayed(targets, connections, left_options, timestamp, aver
                     col = 'blue'
 
                 ax = axarr[i]
-                stem = get_filename_stem(target, timestamp, connected, left)
+                stem = get_filename_stem(target, timestamp, choice, left)
                 time_filename = stem + "time.npy"
                 volt_filename = stem + "volt.npy"
 
@@ -595,10 +575,8 @@ def voltage_traces_overlayed(targets, connections, left_options, timestamp, aver
 
                 ax.legend(loc = 1)
 
-                if(connected):
-                    label = "Connected"
-                else:
-                    label = "Not Connected"
+                label = choice.title()
+
                 ax.annotate(label, xy=(-0.3,0.5), xycoords=("axes fraction",
                     "axes fraction"), weight = "bold")
 
