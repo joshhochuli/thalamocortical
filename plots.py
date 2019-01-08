@@ -5,18 +5,20 @@ import os
 
 def main():
 
-    timestamp = "test"
+    timestamp = "2s"
 
     connections = [True,False]
     targets = ['PY', 'HTC', 'RTC', 'FS', 'IN', 'RE', 'TC']
     left_options = [True,False]
 
-    #heatmaps(targets, connections, left_options, timestamp)
-    #voltage_traces(targets, connections, left_options, timestamp)
-    #voltage_traces(targets, connections, left_options, timestamp, average = True)
-    #percentage(targets, connections, left_options, timestamp)
-    #percentage_overlayed(targets, connections, left_options, timestamp)
-    #voltage_traces_overlayed(targets, connections, left_options, timestamp)
+    heatmaps(targets, connections, left_options, timestamp)
+    voltage_traces(targets, connections, left_options, timestamp)
+    voltage_traces(targets, connections, left_options, timestamp, average = True)
+    percentage(targets, connections, left_options, timestamp)
+    percentage_overlayed(targets, connections, left_options, timestamp)
+    voltage_traces_overlayed(targets, connections, left_options, timestamp)
+    voltage_traces_overlayed(targets, connections, left_options, timestamp,
+            average = True)
 
 #name directory structure and filename redundantly in case they get separated
 #also makes directories required to write files
@@ -68,13 +70,15 @@ def percentage(targets, connections, left_options, timestamp):
                 ax = axarr[i,j]
                 stem = get_filename_stem(target, timestamp, connected, left)
                 volt_filename = stem + "volt.npy"
+                time_filename = stem + "time.npy"
 
                 voltage_data = np.load(volt_filename)
+                time_data = np.load(time_filename)
 
                 plot_data = []
 
                 n_neurons = voltage_data.shape[0]
-                total_time = volt_data.shape[1]
+                total_time = voltage_data.shape[1]
 
                 for time in range(total_time):
                     s = 0
@@ -90,14 +94,14 @@ def percentage(targets, connections, left_options, timestamp):
 
 
                 #similar operations for individual plot and grouped plots
-                plt.plot(x,plot_data)
-                ax.plot(x,plot_data)
+                plt.plot(time_data,plot_data)
+                ax.plot(time_data,plot_data)
 
                 plt.ylim([0,1])
                 ax.set_ylim(0,1)
 
-                plt.fill_between(x,0, plot_data)
-                ax.fill_between(x,0, plot_data)
+                plt.fill_between(time_data,0, plot_data)
+                ax.fill_between(time_data,0, plot_data)
 
                 ind_filename = generate_output_filename(timestamp, target,
                     connected, left, 'percent_activity')
@@ -183,24 +187,35 @@ def heatmaps(targets, connections, left_options, timestamp):
 
                 stem = get_filename_stem(target, timestamp, connected, left)
                 volt_filename = stem + "volt.npy"
+                time_filename = stem + "time.npy"
 
-                data = np.load(volt_filename)
+                voltage_data = np.load(volt_filename)
+                time_data = np.load(time_filename)
 
                 #normalize plot height
-                num_neurons = data.shape[0]
+                num_neurons = voltage_data.shape[0]
                 magic_size = 20000
                 aspect = magic_size / num_neurons
 
                 #determine maximum magnitude for centering colormap around 0
                 m = 0
-                for x in data.flat:
+                for x in voltage_data.flat:
                     if abs(x) > m:
                         m = abs(x)
 
-                plt.imshow(data, aspect = aspect, cmap = 'seismic', vmin = -m, vmax = m)
+                plt.imshow(voltage_data, aspect = aspect, cmap = 'seismic', vmin = -m, vmax = m)
                 plt.colorbar(shrink = 0.35)
-                plt.xlabel('Time')
+                plt.xlabel('Time (seconds)')
                 plt.ylabel('Neuron index')
+
+                pos = np.arange(0,voltage_data.shape[1], 9999)
+                lab = []
+                for val in pos:
+                    print(val)
+                    lab.append("%.1f" % time_data[val])
+
+
+                plt.xticks(pos, lab)
 
                 output_filename = generate_output_filename(timestamp, target,
                         connected, left, 'heatmap')
@@ -409,32 +424,34 @@ def percentage_overlayed(targets, connections, left_options, timestamp):
                 ax = axarr[i]
                 stem = get_filename_stem(target, timestamp, connected, left)
                 volt_filename = stem + "volt.npy"
+                time_filename = stem + "time.npy"
 
-                volt = np.load(volt_filename)
+                time_data = np.load(time_filename)
+                voltage_data = np.load(volt_filename)
 
                 plot_data = []
 
-                n_neurons = volt.shape[0]
-                total_time = volt.shape[1]
+                n_neurons = voltage_data.shape[0]
+                total_samples = voltage_data.shape[1]
 
-                for time in range(total_time):
+                for time in range(total_samples):
                     s = 0
                     for neuron in range(n_neurons):
 
                         #threshold is currently arbitrary
-                        if volt[neuron, time] > -0.051:
+                        if voltage_data[neuron, time] > -0.051:
                             s = s + 1
                     plot_data.append(float(s) / n_neurons)
 
 
                 x = range(len(plot_data))
-                ax.plot(x,plot_data, label = label)
+                ax.plot(time_data,plot_data, label = label, linewidth = 0.5)
                 ax.set_ylim(-0.1,1.1)
-                ax.fill_between(x,0, plot_data, alpha = 0.5)
+                ax.fill_between(time_data,0, plot_data, alpha = 0.5)
 
 
 
-                xlabel = "Time (milliseconds)"
+                xlabel = "Time (seconds)"
                 ylabel = "% Active Neurons"
 
                 ax.set(xlabel = xlabel, ylabel = ylabel)
@@ -479,25 +496,6 @@ def voltage_traces_overlayed(targets, connections, left_options, timestamp, aver
     fs = 12
 
     for target in targets:
-
-        #find axis limits
-        #don't think it's possible to calculate on the fly
-        target_min = 100000
-        target_max = -100000
-
-        for connected in connections:
-            for left in left_options:
-                stem = get_filename_stem(target, timestamp, connected, left)
-                volt_filename = stem + "volt.npy"
-                volt = np.load(volt_filename)
-                mi = volt.min()
-                ma = volt.max()
-                if mi < target_min:
-                    target_min = mi
-                if ma > target_max:
-                    target_max = ma
-
-
         nrows = len(connections)
         ncols = len(left_options)
 
@@ -505,7 +503,40 @@ def voltage_traces_overlayed(targets, connections, left_options, timestamp, aver
 
         subplot_counter = 1
         i = 0
+
         for connected in connections:
+
+            #find axis limits
+            #don't think it's possible to calculate on the fly
+            target_min = 100000
+            target_max = -100000
+
+            for left in left_options:
+                stem = get_filename_stem(target, timestamp, connected, left)
+                volt_filename = stem + "volt.npy"
+                volt = np.load(volt_filename)
+                volt = volt[:,5000:]
+
+                n_neurons = volt.shape[0]
+                time_steps = volt.shape[1]
+
+                averaged = np.empty(shape = (time_steps))
+                for m in range(time_steps):
+                    s = 0
+                    for n in range(n_neurons):
+                        s = s + volt[n,m]
+                    averaged[m] = s / n_neurons
+
+                mi = averaged.min()
+                ma = averaged.max()
+
+                if mi < target_min:
+                    target_min = mi
+                if ma > target_max:
+                    target_max = ma
+
+            if(average):
+                for_cross_corr = []
 
             for left in left_options:
 
@@ -537,8 +568,10 @@ def voltage_traces_overlayed(targets, connections, left_options, timestamp, aver
                         values[k] = s / num_neurons
 
 
-                    ax.plot(time, values, linewidth = 0.5, color = col, label =
+                    ax.plot(time, values, linewidth = 0.2, color = col, label =
                             label)
+
+                    for_cross_corr.append(values)
 
                 else:
                     for x in range(volt.shape[0]):
@@ -551,8 +584,6 @@ def voltage_traces_overlayed(targets, connections, left_options, timestamp, aver
                         else:
                             ax.plot(time, volt[x], linewidth = 0.5,
                                     alpha = 0.5, color = col)
-
-
 
                 xlabel = "Time (seconds)"
                 ylabel = "Voltage (volts)"
@@ -572,7 +603,20 @@ def voltage_traces_overlayed(targets, connections, left_options, timestamp, aver
                     "axes fraction"), weight = "bold")
 
                 subplot_counter = subplot_counter + 1
+
             i = i + 1
+
+            if(average):
+                a = for_cross_corr[0]
+                b = for_cross_corr[1]
+
+                za = (a - a.mean()) / a.std()
+                zb = (b - b.mean()) / b.std()
+
+                cc = np.correlate(za,zb) / a.shape[0]
+
+                ax.annotate("CC: %.2f" % cc, xy = (-0.3,0.4), xycoords = 
+                    ("axes fraction", "axes fraction"))
 
         #still fragile
         f.tight_layout(rect=[0.15,0,1,0.9])
@@ -584,15 +628,14 @@ def voltage_traces_overlayed(targets, connections, left_options, timestamp, aver
 
         f.suptitle(title, x = 0.6, fontsize = 15)
 
-
         output_dir = "output/figures/" + timestamp
         filename = target
         if(average):
             output_dir = output_dir + "/average_voltage_trace/"
-            filename = filename + "_overlayed_average_voltage_trace.png"
+            filename = filename + "_overlayed_average_voltage_trace.pdf"
         else:
             output_dir = output_dir + "/voltage_trace/"
-            filename = filename + "_overlayed_voltage_trace.png"
+            filename = filename + "_overlayed_voltage_trace.pdf"
 
         output_dir = output_dir + "overlayed/"
         os.makedirs(output_dir, exist_ok = True)
@@ -603,8 +646,6 @@ def voltage_traces_overlayed(targets, connections, left_options, timestamp, aver
 
         f.savefig(output_filename, pad_inches = 10)
         plt.close()
-
-
 
 if __name__ == "__main__":
     main()
