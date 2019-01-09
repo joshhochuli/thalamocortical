@@ -5,26 +5,26 @@ import os
 
 def main():
 
-    timestamp = "2s"
+    parent_dir = "2s_3"
 
-    comparison = ["connected","unconnected"]
+    comparison = ["unconnected", "physiological", "fully_connected"]
     targets = ['PY', 'HTC', 'RTC', 'FS', 'IN', 'RE', 'TC']
     left_options = [True,False]
 
-    heatmaps(targets, comparison, left_options, timestamp)
-    voltage_traces(targets, comparison, left_options, timestamp)
-    voltage_traces(targets, comparison, left_options, timestamp, average = True)
-    percentage(targets, comparison, left_options, timestamp)
-    percentage_overlayed(targets, comparison, left_options, timestamp)
-    voltage_traces_overlayed(targets, comparison, left_options, timestamp)
-    voltage_traces_overlayed(targets, comparison, left_options, timestamp,
+    voltage_traces_overlayed(targets, comparison, left_options, parent_dir,
             average = True)
+    heatmaps(targets, comparison, left_options, parent_dir)
+    voltage_traces(targets, comparison, left_options, parent_dir)
+    voltage_traces(targets, comparison, left_options, parent_dir, average = True)
+    percentage(targets, comparison, left_options, parent_dir)
+    percentage_overlayed(targets, comparison, left_options, parent_dir)
+    voltage_traces_overlayed(targets, comparison, left_options, parent_dir)
 
 #name directory structure and filename redundantly in case they get separated
 #also makes directories required to write files
-def generate_output_filename(timestamp, target, left, choice, plot_type):
+def generate_output_filename(parent_dir, target, left, choice, plot_type):
 
-    output_dir = "output/figures/" + timestamp + '/' + plot_type + '/'
+    output_dir = "output/figures/" + parent_dir + '/' + plot_type + '/'
     filename = target
 
     output_dir = output_dir + choice +"/"
@@ -43,14 +43,19 @@ def generate_output_filename(timestamp, target, left, choice, plot_type):
 
     return output_dir + filename
 
-def percentage(targets, comparison, left_options, timestamp):
+def dirname_to_title(dirname):
+
+    s = dirname.replace("_", " ")
+    s = s.title()
+    return s
+
+def percentage(targets, comparison, left_options, parent_dir):
 
     plt.rcParams.update({'font.size':6})
     fs = 12
 
     for target in targets:
-
-        f, axarr = plt.subplots(2,2)
+        f, axarr = plt.subplots(len(comparison),2)
 
         subplot_counter = 1
         i = 0
@@ -61,7 +66,7 @@ def percentage(targets, comparison, left_options, timestamp):
 
                 ind_fig = plt.figure(figsize = (7,5))
                 ax = axarr[i,j]
-                stem = get_filename_stem(target, timestamp, choice, left)
+                stem = get_filename_stem(target, parent_dir, choice, left)
                 volt_filename = stem + "volt.npy"
                 time_filename = stem + "time.npy"
 
@@ -96,7 +101,7 @@ def percentage(targets, comparison, left_options, timestamp):
                 plt.fill_between(time_data,0, plot_data)
                 ax.fill_between(time_data,0, plot_data)
 
-                ind_filename = generate_output_filename(timestamp, target,
+                ind_filename = generate_output_filename(parent_dir, target,
                     left, choice, 'percent_activity')
 
                 xlabel = "Time (seconds)"
@@ -107,7 +112,7 @@ def percentage(targets, comparison, left_options, timestamp):
 
                 #individual plot title
                 title = target
-                title = title + " (%s)" % choice.title()
+                title = title + " (%s)" % dirname_to_title(choice) 
                 if(left):
                     title = title + " (Left)"
                 else:
@@ -123,7 +128,7 @@ def percentage(targets, comparison, left_options, timestamp):
 
                 #outer y-axis labels
                 if(j == 0):
-                    label = choice.title()
+                    label = dirname_to_title(choice) 
 
                     ax.annotate(label, xy=(-0.65,0.5), xycoords=("axes fraction",
                         "axes fraction"), weight = "bold")
@@ -149,7 +154,7 @@ def percentage(targets, comparison, left_options, timestamp):
 
         f.suptitle(title, x = 0.6, fontsize = 15)
 
-        output_dir = "output/figures/" + timestamp
+        output_dir = "output/figures/" + parent_dir
         filename = target
         output_dir = output_dir + "/percent_activity/"
         filename = filename + "_grouped_percent_activity.pdf"
@@ -165,7 +170,7 @@ def percentage(targets, comparison, left_options, timestamp):
         plt.close()
 
 
-def heatmaps(targets, comparison, left_options, timestamp):
+def heatmaps(targets, comparison, left_options, parent_dir):
 
     for target in targets:
         for choice in comparison:
@@ -173,7 +178,7 @@ def heatmaps(targets, comparison, left_options, timestamp):
 
                 fig = plt.figure(figsize = (11, 8.5))
 
-                stem = get_filename_stem(target, timestamp, choice, left)
+                stem = get_filename_stem(target, parent_dir, choice, left)
                 volt_filename = stem + "volt.npy"
                 time_filename = stem + "time.npy"
 
@@ -196,7 +201,7 @@ def heatmaps(targets, comparison, left_options, timestamp):
                 plt.xlabel('Time (seconds)')
                 plt.ylabel('Neuron index')
 
-                title = "%s (%s)" % (target, choice.title())
+                title = "%s (%s)" % (target, dirname_to_title(choice))
                 plt.title(title)
 
                 #shifty indexing to get last time value to be labeled
@@ -208,7 +213,7 @@ def heatmaps(targets, comparison, left_options, timestamp):
 
                 plt.xticks(pos, lab)
 
-                output_filename = generate_output_filename(timestamp, target,
+                output_filename = generate_output_filename(parent_dir, target,
                         left, choice, 'heatmap')
 
                 print(output_filename)
@@ -221,9 +226,9 @@ def heatmaps(targets, comparison, left_options, timestamp):
 
 
 
-def get_filename_stem(target, timestamp, choice, is_left):
+def get_filename_stem(target, parent_dir, choice, is_left):
 
-    stem = "output/" + timestamp + "/%s/" % choice
+    stem = "output/" + parent_dir + "/%s/" % choice
 
     if(is_left):
         name = target + "L_"
@@ -232,7 +237,7 @@ def get_filename_stem(target, timestamp, choice, is_left):
 
     return stem + name
 
-def voltage_traces(targets, comparison, left_options, timestamp, average = False):
+def voltage_traces(targets, comparison, left_options, parent_dir, average = False):
 
     plt.rcParams.update({'font.size':6})
     fs = 12
@@ -246,7 +251,7 @@ def voltage_traces(targets, comparison, left_options, timestamp, average = False
 
         for choice in comparison:
             for left in left_options:
-                stem = get_filename_stem(target, timestamp, choice, left)
+                stem = get_filename_stem(target, parent_dir, choice, left)
                 volt_filename = stem + "volt.npy"
                 volt = np.load(volt_filename)
                 mi = volt.min()
@@ -256,7 +261,7 @@ def voltage_traces(targets, comparison, left_options, timestamp, average = False
                 if ma > target_max:
                     target_max = ma
 
-        f, axarr = plt.subplots(2,2)
+        f, axarr = plt.subplots(len(comparison),2)
 
         subplot_counter = 1
         i = 0
@@ -267,7 +272,7 @@ def voltage_traces(targets, comparison, left_options, timestamp, average = False
 
                 ind_fig = plt.figure(figsize = (7,5))
                 ax = axarr[i,j]
-                stem = get_filename_stem(target, timestamp, choice, left)
+                stem = get_filename_stem(target, parent_dir, choice, left)
                 time_filename = stem + "time.npy"
                 volt_filename = stem + "volt.npy"
 
@@ -294,7 +299,7 @@ def voltage_traces(targets, comparison, left_options, timestamp, average = False
                     ax.plot(time, values, linewidth = 0.5, color = "#3333cc")
                     plt.plot(time, values, linewidth = 1)
 
-                    ind_filename = generate_output_filename(timestamp, target,
+                    ind_filename = generate_output_filename(parent_dir, target,
                         left, choice, 'average_voltage_trace')
 
                 else:
@@ -304,7 +309,7 @@ def voltage_traces(targets, comparison, left_options, timestamp, average = False
 
                         plt.plot(time, volt[x], linewidth = 0.5, alpha = 0.5)
 
-                    ind_filename = generate_output_filename(timestamp, target,
+                    ind_filename = generate_output_filename(parent_dir, target,
                         left, choice, 'voltage_trace')
 
 
@@ -317,7 +322,7 @@ def voltage_traces(targets, comparison, left_options, timestamp, average = False
                 #individual plot title
                 title = target
 
-                title = title + " (%s)" % choice.title()
+                title = title + " (%s)" % dirname_to_title(choice)
 
                 if(left):
 
@@ -338,7 +343,7 @@ def voltage_traces(targets, comparison, left_options, timestamp, average = False
                 ax.set_ylim(target_min - buff, target_max + buff)
 
                 if(j == 0):
-                    label = choice.title()
+                    label = dirname_to_title(choice)
 
                     ax.annotate(label, xy=(-0.65,0.5), xycoords=("axes fraction",
                         "axes fraction"), weight = "bold")
@@ -366,7 +371,7 @@ def voltage_traces(targets, comparison, left_options, timestamp, average = False
         f.suptitle(title, x = 0.6, fontsize = 15)
 
 
-        output_dir = "output/figures/" + timestamp
+        output_dir = "output/figures/" + parent_dir
         filename = target
         if(average):
             output_dir = output_dir + "/average_voltage_trace/"
@@ -385,14 +390,14 @@ def voltage_traces(targets, comparison, left_options, timestamp, average = False
         f.savefig(output_filename, pad_inches = 10)
         plt.close()
 
-def percentage_overlayed(targets, comparison, left_options, timestamp):
+def percentage_overlayed(targets, comparison, left_options, parent_dir):
 
     plt.rcParams.update({'font.size':6})
     fs = 12
 
     for target in targets:
 
-        f, axarr = plt.subplots(2,1)
+        f, axarr = plt.subplots(len(comparison),1)
 
         subplot_counter = 1
         i = 0
@@ -406,7 +411,7 @@ def percentage_overlayed(targets, comparison, left_options, timestamp):
                     label = "Right"
 
                 ax = axarr[i]
-                stem = get_filename_stem(target, timestamp, choice, left)
+                stem = get_filename_stem(target, parent_dir, choice, left)
                 volt_filename = stem + "volt.npy"
                 time_filename = stem + "time.npy"
 
@@ -440,7 +445,7 @@ def percentage_overlayed(targets, comparison, left_options, timestamp):
 
                 ax.set(xlabel = xlabel, ylabel = ylabel)
 
-                label = choice.title()
+                label = dirname_to_title(choice)
 
                 ax.annotate(label, xy=(-0.25,0.5), xycoords=("axes fraction",
                     "axes fraction"), weight = "bold")
@@ -456,7 +461,7 @@ def percentage_overlayed(targets, comparison, left_options, timestamp):
 
         f.suptitle(title, x = 0.6, fontsize = 15)
 
-        output_dir = "output/figures/" + timestamp
+        output_dir = "output/figures/" + parent_dir
         filename = target
         output_dir = output_dir + "/percent_activity/"
         filename = filename + "_overlayed_percent_activity.pdf"
@@ -472,14 +477,14 @@ def percentage_overlayed(targets, comparison, left_options, timestamp):
         plt.close(f)
 
 
-def voltage_traces_overlayed(targets, comparison, left_options, timestamp, average = False):
+def voltage_traces_overlayed(targets, comparison, left_options, parent_dir, average = False):
 
     plt.rcParams.update({'font.size':6})
     fs = 12
 
     for target in targets:
 
-        f, axarr = plt.subplots(2,1)
+        f, axarr = plt.subplots(len(comparison),1)
 
         subplot_counter = 1
         i = 0
@@ -492,7 +497,7 @@ def voltage_traces_overlayed(targets, comparison, left_options, timestamp, avera
             target_max = -100000
 
             for left in left_options:
-                stem = get_filename_stem(target, timestamp, choice, left)
+                stem = get_filename_stem(target, parent_dir, choice, left)
                 volt_filename = stem + "volt.npy"
                 volt = np.load(volt_filename)
                 volt = volt[:,5000:]
@@ -528,7 +533,7 @@ def voltage_traces_overlayed(targets, comparison, left_options, timestamp, avera
                     col = 'blue'
 
                 ax = axarr[i]
-                stem = get_filename_stem(target, timestamp, choice, left)
+                stem = get_filename_stem(target, parent_dir, choice, left)
                 time_filename = stem + "time.npy"
                 volt_filename = stem + "volt.npy"
 
@@ -575,7 +580,7 @@ def voltage_traces_overlayed(targets, comparison, left_options, timestamp, avera
 
                 ax.legend(loc = 1)
 
-                label = choice.title()
+                label = dirname_to_title(choice)
 
                 ax.annotate(label, xy=(-0.3,0.5), xycoords=("axes fraction",
                     "axes fraction"), weight = "bold")
@@ -606,7 +611,7 @@ def voltage_traces_overlayed(targets, comparison, left_options, timestamp, avera
 
         f.suptitle(title, x = 0.6, fontsize = 15)
 
-        output_dir = "output/figures/" + timestamp
+        output_dir = "output/figures/" + parent_dir
         filename = target
         if(average):
             output_dir = output_dir + "/average_voltage_trace/"
