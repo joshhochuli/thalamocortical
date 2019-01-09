@@ -8,16 +8,28 @@ def main():
     timestamp = str(int(time.time()))
 
     run_network(timestamp);
-    run_network(timestamp, connected = False)
 
     print("Output written to directory: %s" % timestamp)
 
-def run_network(timestamp, connected = True):
+def run_network(timestamp):
 
     seed(555)
 
     prefs.codegen.target = 'cython'
     BrianLogger.log_level_debug()
+
+    name = "unconnected"
+
+    CC_prop = 1
+    TT_prop = 1
+    CT_prop = 1
+    TC_prop = 0.1
+
+    connected = False
+
+    #Time constants
+    duration = 2*second
+    t_step = 0.02*ms
 
     left = []
     right = []
@@ -71,12 +83,6 @@ def run_network(timestamp, connected = True):
     nPY = 80
     nFS = 20
 
-    #Time constants
-    duration = 2*second
-    t_step = 0.02*ms
-
-    print(t_step)
-    exit(1)
 
     #tACs Signal Array
     t_d = t_step*numpy.arange(duration/t_step)/second
@@ -903,9 +909,30 @@ def run_network(timestamp, connected = True):
     FSR_RND = Synapses(RNDg,FSRg,RND_PYFS,on_pre = preRND_PYFS, 
             method = 'rk4', dt = t_step, name = "FSR_RND")
 
+    #ipsilateral connection probabilities
+    HTC_HTC_p = 0.3
+    HTC_RE_p = 0.2
+    RTC_HTC_p = 0.3
+    RTC_IN_p = 0.3
+    RTC_RE_p = 0.2
+    RTC_PY_p = 0.23
+    IN_HTC_p = 0.3
+    IN_RE_p = 0.05
+    RE_RE_p = 0.3
+    RE_HTC_p = 0.2
+    RE_RTC_p = 0.2
+    RE_PY_p = 0.2
+    PY_RTC_p = 0.04
+    PY_PY_p = 0.5
+    PY_FS_p = 0.8
+    FS_RTC_p = 0.02
+    FS_FS_p = 0.8
+    
     #Declare Connections
 
     #->HTCL
+
+
     HTCL_HTCL_gj.connect('(x_pre - x_post)**2+(y_pre-y_post)**2 < 4.01*(i < j)' , p = '0.3')
     HTCL_HTCL_gj.connect(i = HTCL_HTCL_gj.j[:], j = HTCL_HTCL_gj.i[:])
     HTCL_RTCL_gj.connect('(x_pre*(nHTC-1.0)/(nRTC-1.0)-x_post)**2+(y_pre*(nHTC-1.0)/(nRTC-1.0)-y_post)**2 < 4.01*gjb_pre', p = '0.3')
@@ -966,6 +993,7 @@ def run_network(timestamp, connected = True):
     RER_PYR_csa.connect(p = '0.3')
     RER_PYR_csb.connect(i = RER_PYR_csa.i[:], j = RER_PYR_csa.j[:])
     RER_RND_cs.connect()
+
 
     #->PYL
     PYL_RTCL_cs.connect(p = '0.04')
@@ -1227,30 +1255,37 @@ def run_network(timestamp, connected = True):
 
     if(connected):
 
+
         PYL_PYR_cs = Synapses(PYRg,PYLg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS,
                 method = 'rk4', dt = t_step, name = "PYL_PYR")
-        PYL_PYR_cs.connect(p = '0.5')
+        #PYL_PYR_cs.connect(p = '0.5')
+        PYL_PYR_cs.connect(p = PY_PY_p * CC_prop)
         PYL_PYR_cs.tau = 2*ms
         PYL_PYR_cs.e_syn = 0*mV
         PYL_PYR_cs.g_spike = 0.3*nS
 
         PYR_PYL_cs = Synapses(PYLg,PYRg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS,
                 method = 'rk4', dt = t_step, name = "PYR_PYL")
-        PYR_PYL_cs.connect(p = '0.5')
+        #PYR_PYL_cs.connect(p = '0.5')
+        PYR_PYL_cs.connect(p = PY_PY_p * CC_prop)
         PYR_PYL_cs.tau = 2*ms
         PYR_PYL_cs.e_syn = 0*mV
         PYR_PYL_cs.g_spike = 0.3*nS
 
         PYL_FSR_cs = Synapses(FSRg,PYLg,(PYFS_cs + iFSR_eqs),on_pre = prePYFS,
                 method = 'rk4', dt = t_step, name = "PYL_FSR")
-        PYL_FSR_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p = '0.8')
+        #PYL_FSR_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p = '0.8')
+        PYL_FSR_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p =
+                PY_FS_p * CC_prop)
         PYL_FSR_cs.tau = 10*ms
         PYL_FSR_cs.e_syn = -70*mV
         PYL_FSR_cs.g_spike = 0.3*nS
 
         PYR_FSL_cs = Synapses(FSLg,PYRg,(PYFS_cs + iFSL_eqs),on_pre = prePYFS,
                 method = 'rk4', dt = t_step, name = "PYR_FSL")
-        PYR_FSL_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p = '0.8')
+        #PYR_FSL_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p = '0.8')
+        PYR_FSL_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p =
+                PY_FS_p * CC_prop)
         PYR_FSL_cs.tau = 10*ms
         PYR_FSL_cs.e_syn = -70*mV
         PYR_FSL_cs.g_spike = 0.3*nS
@@ -1272,7 +1307,8 @@ def run_network(timestamp, connected = True):
 
         PYL_RTCR_cs = Synapses(RTCRg,PYLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS,
                 method = 'rk4', dt = t_step, name = "PYL_RTCR_cs")
-        PYL_RTCR_cs.connect(p = '0.04')
+        #PYL_RTCR_cs.connect(p = '0.04')
+        PYL_RTCR_cs.connect(p = PY_RTC_p * TC_prop)
         PYL_RTCR_cs.tau = 2*ms
         PYL_RTCR_cs.e_syn = 0*mV
         PYL_RTCR_cs.g_spike = 0.3*nS
@@ -1280,32 +1316,32 @@ def run_network(timestamp, connected = True):
 
         PYR_RTCL_cs = Synapses(RTCLg,PYRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
                 method = 'rk4', dt = t_step, name = "PYR_RTCL_cs")
-        PYR_RTCL_cs.connect(p = '0.04')
+        #PYR_RTCL_cs.connect(p = '0.04')
+        PYR_RTCL_cs.connect(p = PY_RTC_p * TC_prop)
         PYR_RTCL_cs.tau = 2*ms
         PYR_RTCL_cs.e_syn = 0*mV
         PYR_RTCL_cs.g_spike = 0.3*nS
 
-
-
         FSR_RTCL_cs = Synapses(RTCLg,FSRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
                 method = 'rk4', dt = t_step, name = "FSR_RTCL_cs")
-        FSR_RTCL_cs.connect(p = '0.02')
+        #FSR_RTCL_cs.connect(p = '0.02')
+        FSR_RTCL_cs.connect(p = FS_RTC_p * TC_prop)
         FSR_RTCL_cs.tau = 2*ms
         FSR_RTCL_cs.e_syn = 0*mV
         FSR_RTCL_cs.g_spike = 0.4*nS
 
-
         FSL_RTCR_cs = Synapses(RTCRg,FSLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, 
                 method = 'rk4', dt = t_step, name = "FSL_RTCR_cs")
-        FSL_RTCR_cs.connect(p = '0.02')
+        #FSL_RTCR_cs.connect(p = '0.02')
+        FSL_RTCR_cs.connect(p = FS_RTC_p * TC_prop)
         FSL_RTCR_cs.tau = 2*ms
         FSL_RTCR_cs.e_syn = 0*mV
         FSL_RTCR_cs.g_spike = 0.4*nS
 
-
         RTCR_PYL_csa = Synapses(PYLg, RTCRg, (CSa + iPYLa_eqs), on_pre = preCS, 
                 method = 'rk4', dt = t_step, name = "RTCR_PYL_csa")
-        RTCR_PYL_csa.connect(p = '0.23')
+        #RTCR_PYL_csa.connect(p = '0.23')
+        RTCR_PYL_csa.connect(p = RTC_PY_p * CT_prop)
         RTCR_PYL_csa.D_i = 1.07
         RTCR_PYL_csa.g_syn = 4*nS
         RTCR_PYL_csa.e_syn = 0*mV
@@ -1314,7 +1350,8 @@ def run_network(timestamp, connected = True):
 
         RTCL_PYR_csa = Synapses(PYRg, RTCLg, (CSa + iPYRa_eqs), on_pre = preCS, 
                 method = 'rk4', dt = t_step, name = "RTCL_PYR_csa")
-        RTCL_PYR_csa.connect(p = '0.23')
+        #RTCL_PYR_csa.connect(p = '0.23')
+        RTCL_PYR_csa.connect(p = RTC_PY_p * CT_prop)
         RTCL_PYR_csa.D_i = 1.07
         RTCL_PYR_csa.g_syn = 4*nS
         RTCL_PYR_csa.e_syn = 0*mV
@@ -1339,7 +1376,8 @@ def run_network(timestamp, connected = True):
 
         RER_PYL_csa = Synapses(PYLg, RERg, (CSa + iPYLa_eqs), on_pre = preCS, 
                 method = 'rk4', dt = t_step, name = "RER_PYL_csa")
-        RER_PYL_csa.connect(p = '0.3')
+        #RER_PYL_csa.connect(p = '0.3')
+        RER_PYL_csa.connect(p = RE_PY_p * CT_prop)
         RER_PYL_csa.D_i = 1.07
         RER_PYL_csa.g_syn = 4*nS
         RER_PYL_csa.e_syn = 0*mV
@@ -1348,7 +1386,8 @@ def run_network(timestamp, connected = True):
 
         REL_PYR_csa = Synapses(PYRg, RELg, (CSa + iPYRa_eqs), on_pre = preCS, 
                 method = 'rk4', dt = t_step, name = "REL_PYR_csa")
-        REL_PYR_csa.connect(p = '0.3')
+        #REL_PYR_csa.connect(p = '0.3')
+        REL_PYR_csa.connect(p = RE_PY_p * CT_prop)
         REL_PYR_csa.D_i = 1.07
         REL_PYR_csa.g_syn = 4*nS
         REL_PYR_csa.e_syn = 0*mV
@@ -1414,13 +1453,9 @@ def run_network(timestamp, connected = True):
     if not(os.path.isdir(base)):
         os.mkdir(base)
 
-    if(connected):
-        stem = base + "connected/"
-    else:
-        stem = base + "unconnected/"
+    stem = base + name + "/"
 
     os.mkdir(stem)
-
 
     np.save(stem + "PYL_time.npy", PYL_volt.t)
     np.save(stem + "PYL_volt.npy", PYL_volt.v)
@@ -1456,6 +1491,16 @@ def run_network(timestamp, connected = True):
     np.save(stem + "FSL_volt.npy", FSL_volt.v)
     np.save(stem + "FSR_time.npy", FSR_volt.t)
     np.save(stem + "FSR_volt.npy", FSR_volt.v)
+
+    settings_file = stem + "settings.txt"
+    s = open(settings_file, "w+")
+    s.write("duration: %s\n" % duration)
+    s.write("connected: %s\n" % connected)
+    s.write("TT_prop: %f\n" % TT_prop)
+    s.write("CC_prop: %f\n" % CC_prop)
+    s.write("TC_prop: %f\n" % TC_prop)
+    s.write("CT_prop: %f\n" % CT_prop)
+
 
 
 
