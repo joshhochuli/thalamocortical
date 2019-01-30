@@ -15,25 +15,830 @@ def run_network(timestamp):
 
     seed(555)
 
-    prefs.codegen.target = 'cython'
+    prefs.codegen.target = 'numpy'
     BrianLogger.log_level_debug()
 
-    name = "unconnected"
+    #full_model()
+    cortex_unconnected(timestamp)
 
-    CC_prop = 1
-    TT_prop = 1
-    CT_prop = 1
-    TC_prop = 0.1
+def cortex_unconnected(timestamp):
 
-    connected = False
+    name = "cortex_test_no_rnd"
 
     #Time constants
     duration = 2*second
     t_step = 0.02*ms
 
-    left = []
-    right = []
-    other = []
+    #Global Variables Across Thalamus Cells
+    #Capacitance
+    C = 1*uF/cm**2
+
+    #Leak Variables
+    gL = 0.01*mS/cm**2          #average g_L value +- 0.0025, uniformly distributed
+    e_KL = -90*mV
+
+    #Ca Variables
+    F = 96489*coulomb/mole
+    w = 0.5*um
+    z = 2
+    ca_Rest = 5e-5*mM
+
+    #iCa Variables
+    R = 8.32441*joule/(mole*kelvin)
+    T = 309.15*kelvin
+    eca0 = R*T/(2*F)
+    ca_0 = 2*mM
+
+    #iCat Variables
+    g_Cat = 2.1*mS/cm**2
+
+    #iNa Variables
+    g_Na = 90*mS/cm**2
+    e_Na = 50*mV
+
+    #iK Variables
+    g_K = 10*mS/cm**2
+    e_K = -90*mV                        #-80*mV in INaK, -90*mV in paper
+
+    #iH Variables       HTC
+    e_H = -43*mV
+
+    #iAHP Variables
+    e_AHP = -90*mV                      #e_K
+
+    #iCan Variables
+    e_Can = 10*mV
+
+    #Number of Each Cell Type(sqrt of # Thalamus Cells)
+    nPY = 80
+    nFS = 20
+
+
+    #tACs Signal Array
+    t_d = t_step*numpy.arange(duration/t_step)/second
+
+    #Modular Equation Expressions
+    #Main HH Equation, HTC, RTC
+    main_TC = '''
+    dv/dt=(-g_L*(v-e_L)-g_KL*(v-e_KL)-iCa-iCal-iCat-iNa-iK-iH-iAHP-iCan-iSyn+iStm)/C            :volt
+    e_L                                                                                         :volt
+    g_KL                                                                                        :siemens/meter**2
+    g_L                                                                                         :siemens/meter**2
+    '''
+
+    #Main HH Equation, IN
+    main_IN = '''
+    dv/dt=(-g_L*(v-e_L)-g_KL*(v-e_KL)-iCa-iNa-iK-iH-iAHP-iCan-iSyn+iStm)/C                      :volt
+    e_L                                                                                         :volt
+    g_KL                                                                                        :siemens/meter**2
+    g_L                                                                                         :siemens/meter**2
+    '''
+
+    #Main HH Equation, RE
+    main_RE = '''
+    dv/dt=(-g_L*(v-e_L)-g_KL*(v-e_KL)-iCa-iNa-iK-iAHP-iCan-iSyn+iStm)/C                         :volt
+    e_L                                                                                         :volt
+    g_KL                                                                                        :siemens/meter**2
+    g_L                                                                                         :siemens/meter**2
+    '''
+
+    #Ca_TC, HTC, RTC
+    Ca_TC ='''
+    tau_Ca = 10*ms                                                                              :second
+    drive = -(iCa+iCat+iCal)/(z*F*w)*(-(iCa+iCat+iCal)/(z*F*w)>=0*mM/second)                    :mM/second
+    dca/dt = drive + (ca_Rest - ca)/tau_Ca                                                      :mM
+    '''
+
+    #Ca_RE_IN, IN, RE
+    Ca_RE_IN ='''
+    tau_Ca                                                                                      :second
+    drive = -iCa/(z*F*w)*(-iCa/(z*F*w)>=0*mM/second)                                            :mM/second
+    dca/dt = drive + (ca_Rest - ca)/tau_Ca                                                      :mM
+    '''
+
+    #iCa, current 0, T0_TC
+    i_Ca = '''
+    g_Ca                                                                                        :siemens/meter**2
+    e_Ca = eca0*log(ca_0/ca)                                                                    :volt
+    m0_inf = 1/(1+exp(-(v+34*mV)/(6.2*mV)))                                                     :1
+    tau_m0 = 0.612*ms+1*ms/(exp(-(v+107*mV)/(16.7*mV))+exp((v-8.2*mV)/(18.2*mV)))               :second
+    dm0/dt = 4.6*(m0_inf-m0)/tau_m0                                                             :1
+    h0_inf = 1/(1+exp((v+58*mV)/(4*mV)))                                                        :1
+    tau_h0a = (1*ms)*(exp((v+442*mV)/(66.6*mV)))*(v < -55*mV)                                   :second
+    tau_h0b = 28*ms+(1*ms)*(exp(-(v-3*mV)/(10.5*mV)))*(v >= -55*mV)                             :second
+    tau_h0 = tau_h0a + tau_h0b                                                                  :second
+    dh0/dt = 3.7*(h0_inf-h0)/tau_h0                                                             :1
+    iCa = g_Ca*m0**2*h0*(v-e_Ca)                                                                :amp/meter**2
+    '''
+
+    #iCa_RE, current 0
+    i_Ca_RE = '''
+    g_Ca = 1.3*mS/cm**2                                                                         :siemens/meter**2
+    e_Ca = eca0*log(ca_0/ca)                                                                    :volt
+    m0_inf = 1/(1+exp(-(v+55*mV)/(7.4*mV)))                                                     :1
+    tau_m0 = 3*ms + 1*ms/(exp(-(v+105*mV)/(15*mV))+exp((v+30*mV)/(10*mV)))                      :second
+    dm0/dt = 6.9*(m0_inf-m0)/tau_m0                                                             :1
+    h0_inf = 1/(1+exp((v+83*mV)/(5*mV)))                                                        :1
+    tau_h0 = 85*ms + 1*ms/(exp(-(v+410*mV)/(50*mV))+exp((v+51*mV)/(4*mV)))                      :second
+    dh0/dt = 3.7*(h0_inf-h0)/tau_h0                                                             :1
+    iCa = g_Ca*m0**2*h0*(v-e_Ca)                                                                :amp/meter**2
+    '''
+
+    #iCat, current 1, IT0_TC
+    i_Cat = '''
+    m1_inf = 1/(1+exp(-(v+62*mV)/(6.2*mV)))                                                     :1
+    tau_m1 = 0.612*ms+1*ms/(exp(-(v+135*mV)/(16.7*mV))+exp((v+19.8*mV)/(18.2*mV)))              :second
+    dm1/dt = 4.6*(m1_inf-m1)/tau_m1                                                             :1
+    h1_inf = 1/(1+exp((v+86*mV)/(4*mV)))                                                        :1
+    tau_h1a = (1*ms)*(exp((v+470*mV)/(66.6*mV)))*(v < -83*mV)                                   :second
+    tau_h1b = 28*ms+(1*ms)*(exp(-(v+25*mV)/(10.5*mV)))*(v >= -83*mV)                            :second
+    tau_h1 = tau_h1a + tau_h1b                                                                  :second
+    dh1/dt = 3.7*(h1_inf-h1)/tau_h1                                                             :1
+    iCat = g_Cat*m1**2*h1*(v-e_Ca)                                                              :amp/meter**2
+    '''
+
+    #iCal, current 2, ICaL_TC
+    i_Cal = '''
+    g_Cal                                                                                       :siemens/meter**2
+    m2_inf = 1/(1+exp(-(v+10*mV)/(4*mV)))                                                       :1
+    tau_m2 = 0.4*ms + 0.7*ms/(exp(-(v+5*mV)/(15*mV))+exp((v+5*mV)/(15*mV)))                     :second
+    dm2/dt = 4.6*(m2_inf-m2)/tau_m2                                                             :1
+    h2_inf = 1/(1+exp((v+25*mV)/(2*mV)))                                                        :1
+    tau_h2 = 300*ms+(100*ms)/(exp(-(v+40*mV)/(9.5*mV))+exp((v+40*mV)/(9.5*mV)))                 :second
+    dh2/dt = 3.7*(h2_inf-h2)/tau_h2                                                             :1
+    iCal = g_Cal*m2**2*h2*(v-e_Ca)                                                              :amp/meter**2
+    '''
+
+    #iNa, current 3, INaK
+    i_Na = '''
+    v_SH                                                                                        :volt
+    a_m3 = (0.32*ms**-1*mV**-1)*(v-v_SH-13*mV)/(1-exp(-(v-v_SH-13*mV)/(4*mV)))                  :Hz
+    b_m3 = (-0.28*mV**-1*ms**-1)*(v-v_SH-40*mV)/(1-exp((v-v_SH-40*mV)/(5*mV)))                  :Hz
+    dm3/dt = (a_m3*(1-m3)-b_m3*m3)                                                              :1
+    a_h3 = (0.128*ms**-1)*exp(-(v-v_SH-17*mV)/(18*mV))                                          :Hz
+    b_h3 = (4*ms**-1)/(1+exp(-(v-v_SH-40*mV)/(5*mV)))                                           :Hz
+    dh3/dt = (a_h3*(1-h3)-b_h3*h3)                                                              :1
+    iNa = g_Na*m3**3*h3*(v-e_Na)                                                                :amp/meter**2
+    '''
+
+    #iK, current 4, INaK
+    i_K = '''
+    tm                                                                                          :1
+    a_m4 = tm*(0.032*ms**-1*mV**-1)*(v-v_SH-15*mV)/(1-exp(-(v-v_SH-15*mV)/(5*mV)))              :Hz
+    b_m4 = tm*(0.5*ms**-1)*exp(-(v-v_SH-10*mV)/(40*mV))                                         :Hz
+    dm4/dt = (a_m4*(1-m4)-b_m4*m4)                                                              :1
+    iK = g_K*m4**4*(v-e_K)                                                                      :amp/meter**2
+    '''
+
+    #iH, current 5, Ih_TC
+    i_H = '''
+    g_H                                                                                         :siemens/meter**2
+    m5_inf = 1/(1+exp((v+75*mV)/(5.5*mV)))                                                      :1
+    tau_m5 = 1*ms/(exp(-0.086/mV*v-14.59)+exp(0.0701/mV*v-1.87))                                :second
+    dm5/dt = (m5_inf-m5)/(tau_m5)                                                               :1
+    iH = g_H*m5*(v-e_H)                                                                         :amp/meter**2
+    '''
+
+    #iAHP, current 6, Iahp2
+    i_AHP = '''
+    g_AHP                                                                                       :siemens/meter**2
+    m6_inf = 48*ca**2/(48*ca**2+0.09*mM**2)                                                     :1
+    tau_m6 = (1*ms*mM**2)/(48*ca**2+0.09*mM**2)                                                 :second
+    dm6/dt = (m6_inf - m6)/(tau_m6)                                                             :1
+    iAHP = g_AHP*m6*(v-e_AHP)                                                                   :amp/meter**2
+    '''
+
+    #iCan, current 7, Ican_TC
+    i_Can = '''
+    g_Can                                                                                       :siemens/meter**2
+    mCa = ca/(0.2*mM+ca)                                                                        :1
+    m7_inf = 1/(1+exp(-(v+43*mV)/(5.2*mV)))                                                     :1
+    tau_m7 = 1.6*ms+(2.7*ms)/(exp(-(v+55*mV)/(15*mV))+exp((v+55*mV)/(15*mV)))                   :second
+    dm7/dt = (m7_inf - m7)/(tau_m7)                                                             :1
+    iCan = g_Can*mCa*m7*(v-e_Can)                                                               :amp/meter**2
+    '''
+
+    #iStim, General, Time-Dependent Stimulus
+    i_Stim = '''
+    n_Stim                                                                                      :meter**2
+    mag                                                                                         :amp
+    iStm = (t > 1*second)*(t < 2*second)*mag/n_Stim                                             :amp/meter**2
+    '''
+
+
+    #iSyn, Synapse Currents, RE
+    i_Syn = '''
+    igj                                                                                         :amp
+    igjHR                                                                                       :amp
+    iPYLa                                                                                       :amp
+    iPYRa                                                                                       :amp
+    iPYLb                                                                                       :amp
+    iPYRb                                                                                       :amp
+    iRND                                                                                        :amp
+    iGLUT = iPYLa + iPYRb + iRND                                                                :amp
+    iSyn = (igj + igjHR + iGLUT + iGABA)/n_Stim                                                 :amp/meter**2
+    '''
+
+    #Location equations
+    loc = '''
+    x                                                                                           :1
+    y                                                                                           :1
+    gjb                                                                                         :1
+    '''
+
+    #Main Izhikevich Equation, PY FS
+    main_PY_FS = '''
+    dv/dt = (k*(v - vr)*(v - vt) - u - iSyn + iStm + sg*Sgn(t))/Cm                              :volt
+    Cm                                                                                          :farad
+    k                                                                                           :siemens/volt
+    vt                                                                                          :volt
+    vr                                                                                          :volt
+    du/dt = a*(b*((v - vr)/mV)**un*(v > vb) - u)                                                :amp
+    a                                                                                           :Hz
+    b                                                                                           :amp
+    vb                                                                                          :volt
+    un                                                                                          :1
+    vth                                                                                         :volt
+    c                                                                                           :volt
+    d                                                                                           :amp
+    sg                                                                                          :1
+    iRTCLa                                                                                      :amp
+    iRTCRa                                                                                      :amp
+    iPYL                                                                                        :amp
+    iPYR                                                                                        :amp
+    iFS                                                                                         :amp
+    iFSL                                                                                        :amp
+    iFSR                                                                                        :amp
+    iRND                                                                                        :amp
+    iStm                                                                                        :amp
+    iSyn = iRTCLa + iRTCRa + iPYL + iPYR + iFS + iRND                                           :amp
+    LFP = abs(iRTCLa + iRTCRa + iPYL + iPYR) + abs(iFS)                                         :amp
+    '''
+
+    #Cell Group Declarations
+    #Declare PY FS Groups
+    FSLg = NeuronGroup(nFS, main_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
+    v = c
+    u += d
+    ''', name = "FSLg")
+
+    PYLg = NeuronGroup(nPY, main_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
+    v = c
+    u += d
+    ''', name = "PYLg")
+
+
+    FSRg = NeuronGroup(nFS, main_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
+    v = c
+    u += d
+    ''', name = "FSRg")
+
+    PYRg = NeuronGroup(nPY, main_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
+    v = c
+    u += d
+    ''', name = "PYRg")
+
+
+    #PYL Group Declaration
+    PYLg.Cm = (100 + 0.1*randn(nPY))*pF
+    PYLg.k = 0.7*pA/(mvolt*mvolt)
+    PYLg.vr = -60*mV + .1*randn(nPY)*mV
+    PYLg.vt = -40*mV + .1*randn(nPY)*mV
+    PYLg.a = (0.03 + 0.001*randn(nPY))*kHz
+    PYLg.b = (-2 + 0.01*randn(nPY))*pA
+    PYLg.vb = -200*volt
+    PYLg.un = 1
+    PYLg.vth = 35*mV + .1*randn(nPY)*mV
+    PYLg.c = -50*mV + 0.1*randn(nPY)*mV
+    PYLg.d = (100 + 0.1*randn(nPY))*pA
+    PYLg.v -60*mV + .1*randn(nPY)*mV
+    PYLg.u = PYLg.b*(PYLg.v-PYLg.vr)/mV
+    PYLg.iStm = 79*pA
+    PYLg.sg = 1
+
+    #PYR Group Declaration
+    PYRg.Cm = (100 + 0.1*randn(nPY))*pF
+    PYRg.k = 0.7*pA/(mvolt*mvolt)
+    PYRg.vr = -60*mV + .1*randn(nPY)*mV
+    PYRg.vt = -40*mV + .1*randn(nPY)*mV
+    PYRg.a = (0.03 + 0.001*randn(nPY))*kHz
+    PYRg.b = (-2 + 0.01*randn(nPY))*pA
+    PYRg.vb = -200*volt
+    PYRg.un = 1
+    PYRg.vth = 35*mV + .1*randn(nPY)*mV
+    PYRg.c = -50*mV + 0.1*randn(nPY)*mV
+    PYRg.d = (100 + 0.1*randn(nPY))*pA
+    PYRg.v = -60*mV + .1*randn(nPY)*mV
+    PYRg.u = PYRg.b*(PYRg.v-PYRg.vr)/mV
+    PYRg.iStm = 79*pA
+    PYRg.sg = 1
+
+
+    #FS Group Declaration
+    FSLg.Cm = (20 + 0.1*randn(nFS))*pF
+    FSLg.k = (1 + 0.01*randn(nFS))*pA/(mvolt*mvolt)
+    FSLg.vr = -55*mV + 0.1*randn(nFS)*mV
+    FSLg.vt = -40*mV + 0.1*randn(nFS)*mV
+    FSLg.a = (0.2 + 0.001*randn(nFS))*kHz
+    FSLg.b = (0.025 + 0.0001*randn(nFS))*pA
+    FSLg.vb = FSLg.vr
+    FSLg.un = 3
+    FSLg.vth = 25*mV + 0.1*randn(nFS)*mV
+    FSLg.c = -45*mV + 0.1*randn(nFS)*mV
+    FSLg.d = (0 + 0.001*randn(nFS))*pA
+    FSLg.v = -55*mV + 0.1*randn(nFS)*mV
+    FSLg.u = (0 + 0.1*randn(nFS))*pA
+    FSLg.iStm = 60*pA
+
+    #FS Group Declaration
+    FSRg.Cm = (20 + 0.1*randn(nFS))*pF
+    FSRg.k = (1 + 0.01*randn(nFS))*pA/(mvolt*mvolt)
+    FSRg.vr = -55*mV + 0.1*randn(nFS)*mV
+    FSRg.vt = -40*mV + 0.1*randn(nFS)*mV
+    FSRg.a = (0.2 + 0.001*randn(nFS))*kHz
+    FSRg.b = (0.025 + 0.0001*randn(nFS))*pA
+    FSRg.vb = FSRg.vr
+    FSRg.un = 3
+    FSRg.vth = 25*mV + 0.1*randn(nFS)*mV
+    FSRg.c = -45*mV + 0.1*randn(nFS)*mV
+    FSRg.d = (0 + 0.001*randn(nFS))*pA
+    FSRg.v = -55*mV + 0.1*randn(nFS)*mV
+    FSRg.u = (0 + 0.1*randn(nFS))*pA
+    FSRg.iStm = 60*pA
+
+    #Constant Spiking Neuron for Noise
+    RNDg = NeuronGroup(1, model = ' v = 0 :1', method = 'rk4', dt = t_step,
+            threshold = 'v < 1', name = "RNDg")
+
+
+    #Declare Initial Conditions Thalamus Cells
+    #Global Variables
+    ca0 = 5e-5*mM
+    v0 = -60*mV
+
+    #iCa, HTC, RTC, IN
+    m00 = 1/(1+exp(-(v0+34*mV)/(6.2*mV)))
+    h00 = 1/(1+exp((v0+58*mV)/(4*mV)))
+
+    #iCa, RE
+    m00_RE = 1/(1+exp(-(v0+55*mV)/(7.4*mV)))
+    h00_RE = 1/(1+exp((v0+83*mV)/(5*mV)))
+
+    #iCat HTC, RTC
+    m10 = 1/(1+exp(-(v0+62*mV)/(6.2*mV)))
+    h10 = 1/(1+exp((v0+86*mV)/(4*mV)))
+
+    #iCal HTC, RTC
+    m20 = 1/(1+exp(-(v0+10*mV)/(4*mV)))
+    h20 = 1/(1+exp((v0+25*mV)/(2*mV)))
+
+    #iH
+    m50 = 1/(1+exp((v0+75*mV)/(5.5*mV)))
+
+    #iAHP
+    m60 = 48*ca0**2/(48*ca0**2+0.09*mM**2)
+
+    #iCan
+    m70 = 1/(1+exp(-(v0+43*mV)/(5.2*mV)))
+
+    #Modular Synapse Equations, Biophysical
+    #Gap Junction
+    GJ = '''
+    rgap                                                                                        :ohm
+    iGJ = (v_post - v_pre)/rgap                                                                 :amp
+    '''
+
+    #Chemical Synapse, GABA_A, AMPA
+    CSa = '''
+    D_i                                                                                         :1
+    t_spike                                                                                     :second
+    g_syn                                                                                       :siemens
+    e_syn                                                                                       :volt
+    alpha                                                                                       :Hz
+    beta                                                                                        :Hz
+    T = 0.5*(t-t_spike < 2.3*ms)*(t-t_spike > 2*ms)*(t_spike > 0*ms)                            :1
+    D = 1 - (1 - D_i*(1 - 0.07))*exp(-(t - t_spike)/700/ms)                                     :1
+    ds/dt = T*alpha*(1-s) - beta*s                                                              :1 (clock-driven)
+    iCS = D*g_syn*s*(v_post - e_syn)                                                            :amp
+    '''
+
+    #Chemical Synapse, NMDA
+    CSb = '''
+    D_i                                                                                         :1
+    t_spike                                                                                     :second
+    g_syn                                                                                       :siemens
+    alpha                                                                                       :Hz
+    beta                                                                                        :Hz
+    T = 0.5*(t-t_spike < 2.3*ms)*(t-t_spike > 2*ms)*(t_spike > 0*ms)                            :1
+    ds/dt = T*alpha*(1-s) - beta*s                                                              :1 (clock-driven)
+    D = 1 - (1 - D_i*(1 - 0.07))*exp(-(t - t_spike)/700/ms)                                     :1
+    B = 1/(1+exp(-(v_post + 25*mV)/12.5/mV))                                                    :1
+    iCS = D*B*g_syn*s*v_post                                                                    :amp
+    '''
+
+    preCS = '''
+    t_spike = t
+    D_i = D
+    '''
+
+    #Random Spiking Synapse, HTC, RTC, IN, RE
+    iRND = '''
+    tau                                                                                         :second
+    t_spike                                                                                     :second
+    g_spike                                                                                     :siemens
+    d                                                                                           :1
+    g                                                                                           :siemens
+    iRND_post = g*v_post                                                                        :amp (summed)
+    '''
+    preRND = '''
+    d = (rand() < 0.003)*(t-t_spike > 3*ms)
+    t_spike = t*d + t_spike*(1-d)
+    g = (g + g_spike*d)*exp(-(t-t_spike)/tau)
+    '''
+
+    iPYLa_eqs = '''
+    iPYLa_post = iCS                                                                             :amp (summed)
+    '''
+
+    iPYRa_eqs = '''
+    iPYRa_post = iCS                                                                             :amp (summed)
+    '''
+
+    iPYLb_eqs = '''
+    iPYLb_post = iCS                                                                             :amp (summed)
+    '''
+
+    iPYRb_eqs = '''
+    iPYRb_post = iCS                                                                             :amp (summed)
+    '''
+
+    #Modular Synapse Equations, Izhikevich
+    #Chemical Synapse, GABA_A, AMDA
+    PYFS_cs = '''
+    tau                                                                                         :second
+    e_syn                                                                                       :volt
+    g_spike                                                                                     :siemens
+    dg/dt = -g/tau                                                                              :siemens (clock-driven)
+    iCS = g*(v_post - e_syn)                                                                    :amp
+    '''
+    prePYFS = '''
+    g += g_spike
+    '''
+
+    #Random Spiking Synapse, PY, FS
+    RND_PYFS = '''
+    std                                                                                         :amp
+    t_spike                                                                                     :second
+    randi                                                                                       :1
+    iRND_post = std*randi                                                                       :amp(summed)
+    '''
+    preRND_PYFS = '''
+    randi = randi*(t-t_spike<0.5*ms)+randn()*(1-(t-t_spike<0.5*ms))
+    t_spike = t_spike*(t-t_spike<0.5*ms)+t*(1-(t-t_spike<0.5*ms))
+    '''
+
+    #->PYFS Equation Expressions
+    iPYL_eqs = '''
+    iPYL_post = iCS                                                                             :amp (summed)
+    '''
+
+    iPYR_eqs = '''
+    iPYR_post = iCS                                                                             :amp (summed)
+    '''
+
+    iFS_eqs = '''
+    iFS_post = iCS                                                                              :amp (summed)
+    '''
+    iFSL_eqs = '''
+    iFSL_post = iCS                                                                             :amp (summed)
+    '''
+    iFSR_eqs = '''
+    iFSR_post = iCS                                                                             :amp (summed)
+    '''
+    #Synapse Group Declarations
+
+    #Intra-hemisphere
+    PYL_PYL_cs = Synapses(PYLg,PYLg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "PYL_PYL_cs")
+    PYL_FSL_cs = Synapses(FSLg,PYLg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "PYL_FSL_cs")
+
+    '''
+    PYL_RND = Synapses(RNDg,PYLg,RND_PYFS,on_pre = preRND_PYFS, 
+            method = 'rk4', dt = t_step, name = "PYL_RND")
+    '''
+    #->PY Synapses
+    PYR_PYR_cs = Synapses(PYRg,PYRg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "PYR_PYR_cs")
+    PYR_FSR_cs = Synapses(FSRg,PYRg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "PYR_FSR_cs")
+
+    '''
+    PYR_RND = Synapses(RNDg,PYRg,RND_PYFS,on_pre = preRND_PYFS, 
+            method = 'rk4', dt = t_step, name = "PYR_RND")
+    '''
+
+    #->FSL Synapses
+    FSL_PYL_cs = Synapses(PYLg,FSLg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "FSL_PYL_cs")
+    FSL_FSL_cs = Synapses(FSLg,FSLg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "FSL_FSL_cs")
+
+    '''
+    FSL_RND = Synapses(RNDg,FSLg,RND_PYFS,on_pre = preRND_PYFS, 
+            method = 'rk4', dt = t_step, name = "FSL_RND")
+    '''
+
+    #->FSR Synapses
+    FSR_PYR_cs = Synapses(PYRg,FSRg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "FSR_PYR_cs")
+    FSR_FSR_cs = Synapses(FSRg,FSRg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "FSR_FSR_cs")
+
+    '''
+    FSR_RND = Synapses(RNDg,FSRg,RND_PYFS,on_pre = preRND_PYFS, 
+            method = 'rk4', dt = t_step, name = "FSR_RND")
+    '''
+
+    #ipsilateral connection probabilities
+    PY_PY_p = 0.5
+    PY_FS_p = 0.8
+    FS_FS_p = 0.8
+
+    #Declare Connections
+
+    #->PYL
+    PYL_PYL_cs.connect(p = '0.5')
+    PYL_FSL_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p = '0.8')
+    #PYL_RND.connect()
+    #->PYR
+    PYR_PYR_cs.connect(p = '0.5')
+    PYR_FSR_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p = '0.8')
+    #PYR_RND.connect()
+
+    #->FS
+    FSL_PYL_cs.connect(i = PYL_FSL_cs.j[:], j = PYL_FSL_cs.i[:])
+    FSL_FSL_cs.connect('abs(i-j) < nFS/2.0*(i!=j)', p = '0.8')
+    #FSL_RND.connect()
+    #->FS
+    FSR_PYR_cs.connect(i = PYR_FSR_cs.j[:], j = PYR_FSR_cs.i[:])
+    FSR_FSR_cs.connect('abs(i-j) < nFS/2.0*(i!=j)', p = '0.8')
+    #FSR_RND.connect()
+
+    #Declare Synapse Variables
+    #->PYL
+    PYL_PYL_cs.tau = 2*ms
+    PYL_PYL_cs.e_syn = 0*mV
+    PYL_PYL_cs.g_spike = 0.3*nS
+    PYL_FSL_cs.tau = 10*ms
+    PYL_FSL_cs.e_syn = -70*mV
+    PYL_FSL_cs.g_spike = 0.3*nS
+    #PYL_RND.std = 0.1*pA
+    #PYL_RND.randi = randn()
+    #->PYR
+    PYR_PYR_cs.tau = 2*ms
+    PYR_PYR_cs.e_syn = 0*mV
+    PYR_PYR_cs.g_spike = 0.3*nS
+    PYR_FSR_cs.tau = 10*ms
+    PYR_FSR_cs.e_syn = -70*mV
+    PYR_FSR_cs.g_spike = 0.3*nS
+    #PYR_RND.std = 0.1*pA
+    #PYR_RND.randi = randn()
+
+    #->FSL
+    FSL_PYL_cs.tau = 2*ms
+    FSL_PYL_cs.e_syn = 0*mV
+    FSL_PYL_cs.g_spike = 0.4*nS
+    FSL_FSL_cs.tau = 10*ms
+    FSL_FSL_cs.e_syn = -70*mV
+    FSL_FSL_cs.g_spike = 0.03*nS
+    #FSL_RND.std = 0.1*pA
+    #FSL_RND.randi = randn()
+    #->FSR
+    FSR_PYR_cs.tau = 2*ms
+    FSR_PYR_cs.e_syn = 0*mV
+    FSR_PYR_cs.g_spike = 0.4*nS
+    FSR_FSR_cs.tau = 10*ms
+    FSR_FSR_cs.e_syn = -70*mV
+    FSR_FSR_cs.g_spike = 0.03*nS
+    #FSR_RND.std = 0.1*pA
+    #FSR_RND.randi = randn()
+
+
+    '''
+    PYL_PYR_cs = Synapses(PYRg,PYLg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS,
+            method = 'rk4', dt = t_step, name = "PYL_PYR", )
+    #PYL_PYR_cs.connect(p = '0.5')
+    PYL_PYR_cs.connect(p = PY_PY_p * CC_prop)
+    PYL_PYR_cs.tau = 2*ms
+    PYL_PYR_cs.e_syn = 0*mV
+    PYL_PYR_cs.g_spike = 0.3*nS
+
+    PYR_PYL_cs = Synapses(PYLg,PYRg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS,
+            method = 'rk4', dt = t_step, name = "PYR_PYL", )
+    #PYR_PYL_cs.connect(p = '0.5')
+    PYR_PYL_cs.connect(p = PY_PY_p * CC_prop)
+    PYR_PYL_cs.tau = 2*ms
+    PYR_PYL_cs.e_syn = 0*mV
+    PYR_PYL_cs.g_spike = 0.3*nS
+
+    PYL_FSR_cs = Synapses(FSRg,PYLg,(PYFS_cs + iFSR_eqs),on_pre = prePYFS,
+            method = 'rk4', dt = t_step, name = "PYL_FSR", )
+    #PYL_FSR_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p = '0.8')
+    PYL_FSR_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p =
+            PY_FS_p * CC_prop)
+    PYL_FSR_cs.tau = 10*ms
+    PYL_FSR_cs.e_syn = -70*mV
+    PYL_FSR_cs.g_spike = 0.3*nS
+
+    PYR_FSL_cs = Synapses(FSLg,PYRg,(PYFS_cs + iFSL_eqs),on_pre = prePYFS,
+            method = 'rk4', dt = t_step, name = "PYR_FSL", )
+    #PYR_FSL_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p = '0.8')
+    PYR_FSL_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p =
+            PY_FS_p * CC_prop)
+    PYR_FSL_cs.tau = 10*ms
+    PYR_FSL_cs.e_syn = -70*mV
+    PYR_FSL_cs.g_spike = 0.3*nS
+
+    FSR_PYL_cs = Synapses(PYLg,FSRg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS,
+            method = 'rk4', dt = t_step, name = "FSR_PYL", )
+    FSR_PYL_cs.connect(i = PYL_FSR_cs.j[:], j = PYL_FSR_cs.i[:])
+    FSR_PYL_cs.tau = 2*ms
+    FSR_PYL_cs.e_syn = 0*mV
+    FSR_PYL_cs.g_spike = 0.4*nS
+
+    FSL_PYR_cs = Synapses(PYRg,FSLg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS,
+            method = 'rk4', dt = t_step, name = "FSL_PYR", )
+    FSL_PYR_cs.connect(i = PYR_FSL_cs.j[:], j = PYR_FSL_cs.i[:])
+    FSL_PYR_cs.tau = 2*ms
+    FSL_PYR_cs.e_syn = 0*mV
+    FSL_PYR_cs.g_spike = 0.4*nS
+
+
+    PYL_RTCR_cs = Synapses(RTCRg,PYLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS,
+            method = 'rk4', dt = t_step, name = "PYL_RTCR_cs", )
+    #PYL_RTCR_cs.connect(p = '0.04')
+    PYL_RTCR_cs.connect(p = PY_RTC_p * TC_prop)
+    PYL_RTCR_cs.tau = 2*ms
+    PYL_RTCR_cs.e_syn = 0*mV
+    PYL_RTCR_cs.g_spike = 0.3*nS
+
+
+    PYR_RTCL_cs = Synapses(RTCLg,PYRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "PYR_RTCL_cs", )
+    #PYR_RTCL_cs.connect(p = '0.04')
+    PYR_RTCL_cs.connect(p = PY_RTC_p * TC_prop)
+    PYR_RTCL_cs.tau = 2*ms
+    PYR_RTCL_cs.e_syn = 0*mV
+    PYR_RTCL_cs.g_spike = 0.3*nS
+
+    FSR_RTCL_cs = Synapses(RTCLg,FSRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "FSR_RTCL_cs", )
+    #FSR_RTCL_cs.connect(p = '0.02')
+    FSR_RTCL_cs.connect(p = FS_RTC_p * TC_prop)
+    FSR_RTCL_cs.tau = 2*ms
+    FSR_RTCL_cs.e_syn = 0*mV
+    FSR_RTCL_cs.g_spike = 0.4*nS
+
+    FSL_RTCR_cs = Synapses(RTCRg,FSLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, 
+            method = 'rk4', dt = t_step, name = "FSL_RTCR_cs", )
+    #FSL_RTCR_cs.connect(p = '0.02')
+    FSL_RTCR_cs.connect(p = FS_RTC_p * TC_prop)
+    FSL_RTCR_cs.tau = 2*ms
+    FSL_RTCR_cs.e_syn = 0*mV
+    FSL_RTCR_cs.g_spike = 0.4*nS
+
+    RTCR_PYL_csa = Synapses(PYLg, RTCRg, (CSa + iPYLa_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RTCR_PYL_csa", )
+    #RTCR_PYL_csa.connect(p = '0.23')
+    RTCR_PYL_csa.connect(p = RTC_PY_p * CT_prop)
+    RTCR_PYL_csa.D_i = 1.07
+    RTCR_PYL_csa.g_syn = 4*nS
+    RTCR_PYL_csa.e_syn = 0*mV
+    RTCR_PYL_csa.alpha = 0.94/ms
+    RTCR_PYL_csa.beta = 0.18/ms
+
+    RTCL_PYR_csa = Synapses(PYRg, RTCLg, (CSa + iPYRa_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RTCL_PYR_csa", )
+    #RTCL_PYR_csa.connect(p = '0.23')
+    RTCL_PYR_csa.connect(p = RTC_PY_p * CT_prop)
+    RTCL_PYR_csa.D_i = 1.07
+    RTCL_PYR_csa.g_syn = 4*nS
+    RTCL_PYR_csa.e_syn = 0*mV
+    RTCL_PYR_csa.alpha = 0.94/ms
+    RTCL_PYR_csa.beta = 0.18/ms
+
+    RTCR_PYL_csb = Synapses(PYLg, RTCRg, (CSb + iPYLb_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RTCR_PYL_csb", )
+    RTCR_PYL_csb.connect(i = RTCR_PYL_csa.i[:], j = RTCR_PYL_csa.j[:])
+    RTCR_PYL_csb.D_i = 1.07
+    RTCR_PYL_csb.g_syn = 2*nS
+    RTCR_PYL_csb.alpha = 1/ms
+    RTCR_PYL_csb.beta = 0.0067/ms
+
+    RTCL_PYR_csb = Synapses(PYRg, RTCLg, (CSb + iPYRb_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RTCL_PYR_csb", )
+    RTCL_PYR_csb.connect(i = RTCL_PYR_csa.i[:], j = RTCL_PYR_csa.j[:])
+    RTCL_PYR_csb.D_i = 1.07
+    RTCL_PYR_csb.g_syn = 2*nS
+    RTCL_PYR_csb.alpha = 1/ms
+    RTCL_PYR_csb.beta = 0.0067/ms
+
+    RER_PYL_csa = Synapses(PYLg, RERg, (CSa + iPYLa_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RER_PYL_csa", )
+    #RER_PYL_csa.connect(p = '0.3')
+    RER_PYL_csa.connect(p = RE_PY_p * CT_prop)
+    RER_PYL_csa.D_i = 1.07
+    RER_PYL_csa.g_syn = 4*nS
+    RER_PYL_csa.e_syn = 0*mV
+    RER_PYL_csa.alpha = 0.94/ms
+    RER_PYL_csa.beta = 0.18/ms
+
+    REL_PYR_csa = Synapses(PYRg, RELg, (CSa + iPYRa_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "REL_PYR_csa", )
+    #REL_PYR_csa.connect(p = '0.3')
+    REL_PYR_csa.connect(p = RE_PY_p * CT_prop)
+    REL_PYR_csa.D_i = 1.07
+    REL_PYR_csa.g_syn = 4*nS
+    REL_PYR_csa.e_syn = 0*mV
+    REL_PYR_csa.alpha = 0.94/ms
+    REL_PYR_csa.beta = 0.18/ms
+
+
+    RER_PYL_csb = Synapses(PYLg, RERg, (CSb + iPYLb_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "RER_PYL_csb", )
+    RER_PYL_csb.connect(i = RER_PYL_csa.i[:], j = RER_PYL_csa.j[:])
+    RER_PYL_csb.D_i = 1.07
+    RER_PYL_csb.g_syn = 2*nS
+    RER_PYL_csb.alpha = 1/ms
+    RER_PYL_csb.beta = 0.0067/ms
+
+    REL_PYR_csb = Synapses(PYRg, RELg, (CSb + iPYRb_eqs), on_pre = preCS, 
+            method = 'rk4', dt = t_step, name = "REL_PYR_csb", )
+    REL_PYR_csb.connect(i = REL_PYR_csa.i[:], j = REL_PYR_csa.j[:])
+    REL_PYR_csb.D_i = 1.07
+    REL_PYR_csb.g_syn = 2*nS
+    REL_PYR_csb.alpha = 1/ms
+    REL_PYR_csb.beta = 0.0067/ms
+    '''
+
+    #State Monitors
+    PYL_volt = StateMonitor(PYLg, 'v', record = True)
+    PYR_volt = StateMonitor(PYRg, 'v', record = True)
+    FSR_volt = StateMonitor(FSRg,'v', record = True)
+    FSL_volt = StateMonitor(FSLg,'v', record = True)
+
+    #Spike Monitors
+
+    Sgn = TimedArray(0*sin(20*pi*t_d)*25*pA, dt = t_step)
+
+    print("Setup complete.")
+    run(duration)
+
+
+    '''
+    base = "output/" + timestamp + "/"
+    if not(os.path.isdir(base)):
+        os.mkdir(base)
+
+    '''
+    stem = "output/" + name + "/"
+
+    os.mkdir(stem)
+
+    np.save(stem + "PYL_time.npy", PYL_volt.t)
+    np.save(stem + "PYL_volt.npy", PYL_volt.v)
+    np.save(stem + "PYR_time.npy", PYR_volt.t)
+    np.save(stem + "PYR_volt.npy", PYR_volt.v)
+
+    np.save(stem + "FSL_time.npy", FSL_volt.t)
+    np.save(stem + "FSL_volt.npy", FSL_volt.v)
+    np.save(stem + "FSR_time.npy", FSR_volt.t)
+    np.save(stem + "FSR_volt.npy", FSR_volt.v)
+
+    settings_file = stem + "settings.txt"
+    s = open(settings_file, "w+")
+    s.write("duration: %s\n" % duration)
+
+
+def full_model():
+
+    delay_magnitude = 50
+    global_delay = delay_magnitude*ms
+
+    name = "strip_test"
+
+    CC_prop = 0.03
+    TT_prop = 1
+    CT_prop = 1
+    TC_prop = 0.1
+
+    connected = True
+
+    #Time constants
+    duration = 0.1*second
+    t_step = 0.02*ms
+
 
     #Global Variables Across Thalamus Cells
     #Capacitance
@@ -235,6 +1040,7 @@ def run_network(timestamp):
     iStm = (t > 1*second)*(t < 2*second)*mag/n_Stim                                             :amp/meter**2
     '''
 
+
     #iSyn, Synapse Currents, RE
     i_Syn = '''
     igj                                                                                         :amp
@@ -312,7 +1118,6 @@ def run_network(timestamp):
     TCLg.tm  = 0.25
     TCLg.g_H = 0.01*mS/cm**2
     TCLg.n_Stim = 2.9e-4*cm**2
-    left.append(TCLg)
 
     #Declare TCR Group
     TCRg = NeuronGroup(nHTC**2+nRTC**2,TC_eqs,method = 'rk4',dt = t_step,threshold =
@@ -323,7 +1128,6 @@ def run_network(timestamp):
     TCRg.tm  = 0.25
     TCRg.g_H = 0.01*mS/cm**2
     TCRg.n_Stim = 2.9e-4*cm**2
-    right.append(TCRg)
 
     #Declare HTCL Group
     HTCLg = Subgroup(source = TCLg, start = 0, stop = nHTC**2, name = "HTCLg")
@@ -334,7 +1138,6 @@ def run_network(timestamp):
     HTCLg.g_Can = 0.5*mS/cm**2
     HTCLg.x = 'i%nHTC'
     HTCLg.y = '(i - x)/nHTC'
-    left.append(HTCLg)
 
     #Declare HTCR Group
     HTCRg = Subgroup(source = TCRg, start = 0, stop = nHTC**2, name = "HTCRg")
@@ -345,7 +1148,6 @@ def run_network(timestamp):
     HTCRg.g_Can = 0.5*mS/cm**2
     HTCRg.x = 'i%nHTC'
     HTCRg.y = '(i - x)/nHTC'
-    right.append(HTCRg)
 
     #Declare RTCL Group
     RTCLg = Subgroup(source = TCLg, start = nHTC**2,  stop = len(TCLg), name = "RTCLg")
@@ -357,7 +1159,6 @@ def run_network(timestamp):
     RTCLg.x = 'i%nRTC'
     RTCLg.y = '(i - x)/nRTC'
     RTCLg.gjb = rand(nRTC*nRTC) < 0.2
-    left.append(RTCLg)
 
     #Declare RTCR Group
     RTCRg = Subgroup(source = TCRg, start = nHTC**2,  stop = len(TCRg), name = "RTCRg")
@@ -369,7 +1170,6 @@ def run_network(timestamp):
     RTCRg.x = 'i%nRTC'
     RTCRg.y = '(i - x)/nRTC'
     RTCRg.gjb = rand(nRTC*nRTC) < 0.2
-    right.append(RTCRg)
 
     #Declare INL Group
     INLg = NeuronGroup(nIN*nIN,IN_eqs,method = 'rk4',dt = t_step,threshold = 'v > 0*mV',
@@ -385,7 +1185,6 @@ def run_network(timestamp):
     INLg.g_AHP = 0.2*mS/cm**2
     INLg.g_Can = 0.1*mS/cm**2
     INLg.n_Stim = 1.7e-4*cm**2
-    left.append(INLg)
 
     #Declare INR Group
     INRg = NeuronGroup(nIN*nIN,IN_eqs,method = 'rk4',dt = t_step,threshold = 'v > 0*mV',
@@ -401,7 +1200,6 @@ def run_network(timestamp):
     INRg.g_AHP = 0.2*mS/cm**2
     INRg.g_Can = 0.1*mS/cm**2
     INRg.n_Stim = 1.7e-4*cm**2
-    right.append(INRg)
 
     #Declare REL Group
     RELg = NeuronGroup(nRE*nRE,RE_eqs,method = 'rk4',dt = t_step,threshold = 'v > 0*mV',
@@ -418,7 +1216,6 @@ def run_network(timestamp):
     RELg.x = 'i%nRE'
     RELg.y = '(i - x)/nRE'
     RELg.gjb = rand(nRE*nRE) < 0.2
-    left.append(RELg)
 
     #Declare RER Group
     RERg = NeuronGroup(nRE*nRE,RE_eqs,method = 'rk4',dt = t_step,threshold = 'v > 0*mV',
@@ -435,33 +1232,28 @@ def run_network(timestamp):
     RERg.x = 'i%nRE'
     RERg.y = '(i - x)/nRE'
     RERg.gjb = rand(nRE*nRE) < 0.2
-    right.append(RERg)
 
     #Declare PY FS Groups
     FSLg = NeuronGroup(nFS, main_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
     v = c
     u += d
     ''', name = "FSLg")
-    left.append(FSLg)
 
     PYLg = NeuronGroup(nPY, main_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
     v = c
     u += d
     ''', name = "PYLg")
-    left.append(PYLg)
 
 
     FSRg = NeuronGroup(nFS, main_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
     v = c
     u += d
     ''', name = "FSRg")
-    right.append(FSRg)
 
     PYRg = NeuronGroup(nPY, main_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
     v = c
     u += d
     ''', name = "PYRg")
-    right.append(PYRg)
 
 
 
@@ -481,7 +1273,6 @@ def run_network(timestamp):
     PYLg.u = PYLg.b*(PYLg.v-PYLg.vr)/mV
     PYLg.iStm = 79*pA
     PYLg.sg = 1
-    left.append(PYLg)
 
     #PYR Group Declaration
     PYRg.Cm = (100 + 0.1*randn(nPY))*pF
@@ -499,7 +1290,6 @@ def run_network(timestamp):
     PYRg.u = PYRg.b*(PYRg.v-PYRg.vr)/mV
     PYRg.iStm = 79*pA
     PYRg.sg = 1
-    right.append(PYRg)
 
 
     #FS Group Declaration
@@ -517,7 +1307,6 @@ def run_network(timestamp):
     FSLg.v = -55*mV + 0.1*randn(nFS)*mV
     FSLg.u = (0 + 0.1*randn(nFS))*pA
     FSLg.iStm = 60*pA
-    left.append(FSLg)
 
     #FS Group Declaration
     FSRg.Cm = (20 + 0.1*randn(nFS))*pF
@@ -534,12 +1323,10 @@ def run_network(timestamp):
     FSRg.v = -55*mV + 0.1*randn(nFS)*mV
     FSRg.u = (0 + 0.1*randn(nFS))*pA
     FSRg.iStm = 60*pA
-    right.append(FSRg)
 
     #Constant Spiking Neuron for Noise
     RNDg = NeuronGroup(1, model = ' v = 0 :1', method = 'rk4', dt = t_step,
             threshold = 'v < 1', name = "RNDg")
-    other.append(RNDg)
 
 
     #Declare Initial Conditions Thalamus Cells
@@ -796,8 +1583,10 @@ def run_network(timestamp):
     RTCL_REL_cs = Synapses(RELg,RTCLg,(CSa + iRE_eqs),on_pre = preCS,
             method = 'rk4', dt = t_step, name = "RTCL_REL_cs")
     RTCL_PYL_csa = Synapses(PYLg, RTCLg, (CSa + iPYLa_eqs), on_pre = preCS,
-            method = 'rk4', dt = t_step, name = "RTCL_PYL_csa")
+            method = 'rk4', dt = t_step, name = "RTCL_PYL_csa", delay =
+            global_delay)
     RTCL_PYL_csb = Synapses(PYLg, RTCLg, (CSb + iPYLb_eqs), on_pre = preCS,
+            delay = global_delay,
             method = 'rk4', dt = t_step, name = "RTCL_PYL_csb")
     RTCL_RND_cs = Synapses(RNDg, RTCLg, iRND, on_pre = preRND,
             method = 'rk4', dt = t_step, name = "RTCL_RND_cs")
@@ -846,9 +1635,11 @@ def run_network(timestamp):
     REL_REL_cs = Synapses(RELg,RELg,(CSa + iRE_eqs),on_pre = preCS, 
             method = 'rk4', dt = t_step, name = "REL_REL_cs")
     REL_PYL_csa = Synapses(PYLg, RELg, (CSa + iPYLa_eqs), on_pre = preCS, 
-            method = 'rk4', dt = t_step, name = "REL_PYL_csa")
+            method = 'rk4', dt = t_step, name = "REL_PYL_csa", delay =
+            global_delay)
     REL_PYL_csb = Synapses(PYLg, RELg, (CSb + iPYLb_eqs), on_pre = preCS, 
-            method = 'rk4', dt = t_step, name = "REL_PYL_csb")
+            method = 'rk4', dt = t_step, name = "REL_PYL_csb", delay =
+            global_delay)
     REL_RND_cs = Synapses(RNDg, RELg, iRND, on_pre = preRND, 
             method = 'rk4', dt = t_step, name = "REL_RND_cs")
     #->RER Synapses
@@ -864,15 +1655,18 @@ def run_network(timestamp):
     RER_RER_cs = Synapses(RERg,RERg,(CSa + iRE_eqs),on_pre = preCS, 
             method = 'rk4', dt = t_step, name = "RER_RER_cs")
     RER_PYR_csa = Synapses(PYRg, RERg, (CSa + iPYRa_eqs), on_pre = preCS, 
-            method = 'rk4', dt = t_step, name = "RER_PYR_csa")
+            method = 'rk4', dt = t_step, name = "RER_PYR_csa", delay =
+            global_delay)
     RER_PYR_csb = Synapses(PYRg, RERg, (CSb + iPYRb_eqs), on_pre = preCS, 
-            method = 'rk4', dt = t_step, name = "RER_PYR_csb")
+            method = 'rk4', dt = t_step, name = "RER_PYR_csb", delay =
+            global_delay)
     RER_RND_cs = Synapses(RNDg, RERg, iRND, on_pre = preRND, 
             method = 'rk4', dt = t_step, name = "RER_RND_cs")
 
     #->PYL Synapses
     PYL_RTCL_cs = Synapses(RTCLg,PYLg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
-            method = 'rk4', dt = t_step, name = "PYL_RTCL_cs")
+            method = 'rk4', dt = t_step, name = "PYL_RTCL_cs", delay =
+            global_delay)
     PYL_PYL_cs = Synapses(PYLg,PYLg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS, 
             method = 'rk4', dt = t_step, name = "PYL_PYL_cs")
     PYL_FSL_cs = Synapses(FSLg,PYLg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, 
@@ -881,7 +1675,8 @@ def run_network(timestamp):
             method = 'rk4', dt = t_step, name = "PYL_RND")
     #->PY Synapses
     PYR_RTCR_cs = Synapses(RTCRg,PYRg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, 
-            method = 'rk4', dt = t_step, name = "PYR_RTCR_cs")
+            method = 'rk4', dt = t_step, name = "PYR_RTCR_cs", delay =
+            global_delay)
     PYR_PYR_cs = Synapses(PYRg,PYRg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS, 
             method = 'rk4', dt = t_step, name = "PYR_PYR_cs")
     PYR_FSR_cs = Synapses(FSRg,PYRg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, 
@@ -891,7 +1686,8 @@ def run_network(timestamp):
 
     #->FSL Synapses
     FSL_RTCL_cs = Synapses(RTCLg,FSLg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
-            method = 'rk4', dt = t_step, name = "FSL_RTCL_cs")
+            method = 'rk4', dt = t_step, name = "FSL_RTCL_cs", delay =
+            global_delay)
     FSL_PYL_cs = Synapses(PYLg,FSLg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS, 
             method = 'rk4', dt = t_step, name = "FSL_PYL_cs")
     FSL_FSL_cs = Synapses(FSLg,FSLg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, 
@@ -901,7 +1697,8 @@ def run_network(timestamp):
 
     #->FSR Synapses
     FSR_RTCR_cs = Synapses(RTCRg,FSRg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, 
-            method = 'rk4', dt = t_step, name = "FSR_RTCT_cs")
+            method = 'rk4', dt = t_step, name = "FSR_RTCT_cs", delay =
+            global_delay)
     FSR_PYR_cs = Synapses(PYRg,FSRg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS, 
             method = 'rk4', dt = t_step, name = "FSR_PYR_cs")
     FSR_FSR_cs = Synapses(FSRg,FSRg,(PYFS_cs + iFS_eqs),on_pre = prePYFS, 
@@ -1255,9 +2052,9 @@ def run_network(timestamp):
 
     if(connected):
 
-
         PYL_PYR_cs = Synapses(PYRg,PYLg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS,
-                method = 'rk4', dt = t_step, name = "PYL_PYR")
+                method = 'rk4', dt = t_step, name = "PYL_PYR", delay =
+                global_delay)
         #PYL_PYR_cs.connect(p = '0.5')
         PYL_PYR_cs.connect(p = PY_PY_p * CC_prop)
         PYL_PYR_cs.tau = 2*ms
@@ -1265,7 +2062,8 @@ def run_network(timestamp):
         PYL_PYR_cs.g_spike = 0.3*nS
 
         PYR_PYL_cs = Synapses(PYLg,PYRg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS,
-                method = 'rk4', dt = t_step, name = "PYR_PYL")
+                method = 'rk4', dt = t_step, name = "PYR_PYL", delay =
+                global_delay)
         #PYR_PYL_cs.connect(p = '0.5')
         PYR_PYL_cs.connect(p = PY_PY_p * CC_prop)
         PYR_PYL_cs.tau = 2*ms
@@ -1273,7 +2071,8 @@ def run_network(timestamp):
         PYR_PYL_cs.g_spike = 0.3*nS
 
         PYL_FSR_cs = Synapses(FSRg,PYLg,(PYFS_cs + iFSR_eqs),on_pre = prePYFS,
-                method = 'rk4', dt = t_step, name = "PYL_FSR")
+                method = 'rk4', dt = t_step, name = "PYL_FSR", delay =
+                global_delay)
         #PYL_FSR_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p = '0.8')
         PYL_FSR_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p =
                 PY_FS_p * CC_prop)
@@ -1282,7 +2081,8 @@ def run_network(timestamp):
         PYL_FSR_cs.g_spike = 0.3*nS
 
         PYR_FSL_cs = Synapses(FSLg,PYRg,(PYFS_cs + iFSL_eqs),on_pre = prePYFS,
-                method = 'rk4', dt = t_step, name = "PYR_FSL")
+                method = 'rk4', dt = t_step, name = "PYR_FSL", delay =
+                global_delay)
         #PYR_FSL_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p = '0.8')
         PYR_FSL_cs.connect('abs(i*(nPY-1.0)/(nFS-1.0) - j) < nPY*0.2', p =
                 PY_FS_p * CC_prop)
@@ -1291,14 +2091,16 @@ def run_network(timestamp):
         PYR_FSL_cs.g_spike = 0.3*nS
 
         FSR_PYL_cs = Synapses(PYLg,FSRg,(PYFS_cs + iPYL_eqs),on_pre = prePYFS,
-                method = 'rk4', dt = t_step, name = "FSR_PYL")
+                method = 'rk4', dt = t_step, name = "FSR_PYL", delay =
+                global_delay)
         FSR_PYL_cs.connect(i = PYL_FSR_cs.j[:], j = PYL_FSR_cs.i[:])
         FSR_PYL_cs.tau = 2*ms
         FSR_PYL_cs.e_syn = 0*mV
         FSR_PYL_cs.g_spike = 0.4*nS
 
         FSL_PYR_cs = Synapses(PYRg,FSLg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS,
-                method = 'rk4', dt = t_step, name = "FSL_PYR")
+                method = 'rk4', dt = t_step, name = "FSL_PYR", delay =
+                global_delay)
         FSL_PYR_cs.connect(i = PYR_FSL_cs.j[:], j = PYR_FSL_cs.i[:])
         FSL_PYR_cs.tau = 2*ms
         FSL_PYR_cs.e_syn = 0*mV
@@ -1306,7 +2108,8 @@ def run_network(timestamp):
 
 
         PYL_RTCR_cs = Synapses(RTCRg,PYLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS,
-                method = 'rk4', dt = t_step, name = "PYL_RTCR_cs")
+                method = 'rk4', dt = t_step, name = "PYL_RTCR_cs", delay =
+                global_delay)
         #PYL_RTCR_cs.connect(p = '0.04')
         PYL_RTCR_cs.connect(p = PY_RTC_p * TC_prop)
         PYL_RTCR_cs.tau = 2*ms
@@ -1315,7 +2118,8 @@ def run_network(timestamp):
 
 
         PYR_RTCL_cs = Synapses(RTCLg,PYRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
-                method = 'rk4', dt = t_step, name = "PYR_RTCL_cs")
+                method = 'rk4', dt = t_step, name = "PYR_RTCL_cs", delay =
+                global_delay)
         #PYR_RTCL_cs.connect(p = '0.04')
         PYR_RTCL_cs.connect(p = PY_RTC_p * TC_prop)
         PYR_RTCL_cs.tau = 2*ms
@@ -1323,7 +2127,8 @@ def run_network(timestamp):
         PYR_RTCL_cs.g_spike = 0.3*nS
 
         FSR_RTCL_cs = Synapses(RTCLg,FSRg,(PYFS_cs + iRTCLa_eqs),on_pre = prePYFS, 
-                method = 'rk4', dt = t_step, name = "FSR_RTCL_cs")
+                method = 'rk4', dt = t_step, name = "FSR_RTCL_cs", delay =
+                global_delay)
         #FSR_RTCL_cs.connect(p = '0.02')
         FSR_RTCL_cs.connect(p = FS_RTC_p * TC_prop)
         FSR_RTCL_cs.tau = 2*ms
@@ -1331,7 +2136,8 @@ def run_network(timestamp):
         FSR_RTCL_cs.g_spike = 0.4*nS
 
         FSL_RTCR_cs = Synapses(RTCRg,FSLg,(PYFS_cs + iRTCRa_eqs),on_pre = prePYFS, 
-                method = 'rk4', dt = t_step, name = "FSL_RTCR_cs")
+                method = 'rk4', dt = t_step, name = "FSL_RTCR_cs", delay =
+                global_delay)
         #FSL_RTCR_cs.connect(p = '0.02')
         FSL_RTCR_cs.connect(p = FS_RTC_p * TC_prop)
         FSL_RTCR_cs.tau = 2*ms
@@ -1339,7 +2145,8 @@ def run_network(timestamp):
         FSL_RTCR_cs.g_spike = 0.4*nS
 
         RTCR_PYL_csa = Synapses(PYLg, RTCRg, (CSa + iPYLa_eqs), on_pre = preCS, 
-                method = 'rk4', dt = t_step, name = "RTCR_PYL_csa")
+                method = 'rk4', dt = t_step, name = "RTCR_PYL_csa", delay =
+                global_delay)
         #RTCR_PYL_csa.connect(p = '0.23')
         RTCR_PYL_csa.connect(p = RTC_PY_p * CT_prop)
         RTCR_PYL_csa.D_i = 1.07
@@ -1349,7 +2156,8 @@ def run_network(timestamp):
         RTCR_PYL_csa.beta = 0.18/ms
 
         RTCL_PYR_csa = Synapses(PYRg, RTCLg, (CSa + iPYRa_eqs), on_pre = preCS, 
-                method = 'rk4', dt = t_step, name = "RTCL_PYR_csa")
+                method = 'rk4', dt = t_step, name = "RTCL_PYR_csa", delay =
+                global_delay)
         #RTCL_PYR_csa.connect(p = '0.23')
         RTCL_PYR_csa.connect(p = RTC_PY_p * CT_prop)
         RTCL_PYR_csa.D_i = 1.07
@@ -1359,7 +2167,8 @@ def run_network(timestamp):
         RTCL_PYR_csa.beta = 0.18/ms
 
         RTCR_PYL_csb = Synapses(PYLg, RTCRg, (CSb + iPYLb_eqs), on_pre = preCS, 
-                method = 'rk4', dt = t_step, name = "RTCR_PYL_csb")
+                method = 'rk4', dt = t_step, name = "RTCR_PYL_csb", delay =
+                global_delay)
         RTCR_PYL_csb.connect(i = RTCR_PYL_csa.i[:], j = RTCR_PYL_csa.j[:])
         RTCR_PYL_csb.D_i = 1.07
         RTCR_PYL_csb.g_syn = 2*nS
@@ -1367,7 +2176,8 @@ def run_network(timestamp):
         RTCR_PYL_csb.beta = 0.0067/ms
 
         RTCL_PYR_csb = Synapses(PYRg, RTCLg, (CSb + iPYRb_eqs), on_pre = preCS, 
-                method = 'rk4', dt = t_step, name = "RTCL_PYR_csb")
+                method = 'rk4', dt = t_step, name = "RTCL_PYR_csb", delay =
+                global_delay)
         RTCL_PYR_csb.connect(i = RTCL_PYR_csa.i[:], j = RTCL_PYR_csa.j[:])
         RTCL_PYR_csb.D_i = 1.07
         RTCL_PYR_csb.g_syn = 2*nS
@@ -1375,7 +2185,8 @@ def run_network(timestamp):
         RTCL_PYR_csb.beta = 0.0067/ms
 
         RER_PYL_csa = Synapses(PYLg, RERg, (CSa + iPYLa_eqs), on_pre = preCS, 
-                method = 'rk4', dt = t_step, name = "RER_PYL_csa")
+                method = 'rk4', dt = t_step, name = "RER_PYL_csa", delay =
+                global_delay)
         #RER_PYL_csa.connect(p = '0.3')
         RER_PYL_csa.connect(p = RE_PY_p * CT_prop)
         RER_PYL_csa.D_i = 1.07
@@ -1385,7 +2196,8 @@ def run_network(timestamp):
         RER_PYL_csa.beta = 0.18/ms
 
         REL_PYR_csa = Synapses(PYRg, RELg, (CSa + iPYRa_eqs), on_pre = preCS, 
-                method = 'rk4', dt = t_step, name = "REL_PYR_csa")
+                method = 'rk4', dt = t_step, name = "REL_PYR_csa", delay =
+                global_delay)
         #REL_PYR_csa.connect(p = '0.3')
         REL_PYR_csa.connect(p = RE_PY_p * CT_prop)
         REL_PYR_csa.D_i = 1.07
@@ -1396,7 +2208,8 @@ def run_network(timestamp):
 
 
         RER_PYL_csb = Synapses(PYLg, RERg, (CSb + iPYLb_eqs), on_pre = preCS, 
-                method = 'rk4', dt = t_step, name = "RER_PYL_csb")
+                method = 'rk4', dt = t_step, name = "RER_PYL_csb", delay =
+                global_delay)
         RER_PYL_csb.connect(i = RER_PYL_csa.i[:], j = RER_PYL_csa.j[:])
         RER_PYL_csb.D_i = 1.07
         RER_PYL_csb.g_syn = 2*nS
@@ -1404,7 +2217,8 @@ def run_network(timestamp):
         RER_PYL_csb.beta = 0.0067/ms
 
         REL_PYR_csb = Synapses(PYRg, RELg, (CSb + iPYRb_eqs), on_pre = preCS, 
-                method = 'rk4', dt = t_step, name = "REL_PYR_csb")
+                method = 'rk4', dt = t_step, name = "REL_PYR_csb", delay =
+                global_delay)
         REL_PYR_csb.connect(i = REL_PYR_csa.i[:], j = REL_PYR_csa.j[:])
         REL_PYR_csb.D_i = 1.07
         REL_PYR_csb.g_syn = 2*nS
@@ -1448,7 +2262,6 @@ def run_network(timestamp):
     print("Setup complete.")
     run(duration)
 
-
     base = "output/" + timestamp + "/"
     if not(os.path.isdir(base)):
         os.mkdir(base)
@@ -1461,37 +2274,6 @@ def run_network(timestamp):
     np.save(stem + "PYL_volt.npy", PYL_volt.v)
     np.save(stem + "PYR_time.npy", PYR_volt.t)
     np.save(stem + "PYR_volt.npy", PYR_volt.v)
-
-    np.save(stem + "INL_time.npy", INL_volt.t)
-    np.save(stem + "INL_volt.npy", INL_volt.v)
-    np.save(stem + "INR_time.npy", INR_volt.t)
-    np.save(stem + "INR_volt.npy", INR_volt.v)
-
-    np.save(stem + "REL_time.npy", REL_volt.t)
-    np.save(stem + "REL_volt.npy", REL_volt.v)
-    np.save(stem + "RER_time.npy", RER_volt.t)
-    np.save(stem + "RER_volt.npy", RER_volt.v)
-
-    np.save(stem + "RTCL_time.npy", RTCL_volt.t)
-    np.save(stem + "RTCL_volt.npy", RTCL_volt.v)
-    np.save(stem + "RTCR_time.npy", RTCR_volt.t)
-    np.save(stem + "RTCR_volt.npy", RTCR_volt.v)
-
-    np.save(stem + "HTCL_time.npy", HTCL_volt.t)
-    np.save(stem + "HTCL_volt.npy", HTCL_volt.v)
-    np.save(stem + "HTCR_time.npy", HTCR_volt.t)
-    np.save(stem + "HTCR_volt.npy", HTCR_volt.v)
-
-    np.save(stem + "TCL_time.npy", TCL_volt.t)
-    np.save(stem + "TCL_volt.npy", TCL_volt.v)
-    np.save(stem + "TCR_time.npy", TCR_volt.t)
-    np.save(stem + "TCR_volt.npy", TCR_volt.v)
-
-    np.save(stem + "FSL_time.npy", FSL_volt.t)
-    np.save(stem + "FSL_volt.npy", FSL_volt.v)
-    np.save(stem + "FSR_time.npy", FSR_volt.t)
-    np.save(stem + "FSR_volt.npy", FSR_volt.v)
-
     settings_file = stem + "settings.txt"
     s = open(settings_file, "w+")
     s.write("duration: %s\n" % duration)
@@ -1500,7 +2282,6 @@ def run_network(timestamp):
     s.write("CC_prop: %f\n" % CC_prop)
     s.write("TC_prop: %f\n" % TC_prop)
     s.write("CT_prop: %f\n" % CT_prop)
-
 
 
 
