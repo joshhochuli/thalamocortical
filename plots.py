@@ -265,7 +265,7 @@ def plot_spd(ax, volt):
 
 def voltage_traces(targets, comparison, left_options, parent_dir, average = False):
 
-    plt.rcParams.update({'font.size':6})
+    plt.rcParams.update({'font.size':20})
     fs = 12
 
     fig = plt.figure(figsize = (10,8))
@@ -324,39 +324,23 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
                 if ma > target_max:
                     target_max = ma
 
-        f, axarr = plt.subplots(len(comparison),4)
-
-        '''
-        fig = plt.figure(figsize = (30, 10))
-        outer = gridspec.GridSpec(len(comparison), 2, wspace = 0.2, hspace = 0.2)
-
-        for i in range(len(comparison) * 2):
-
-                inner = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec =
-                        outer[i], wspace= 0.2, hspace = 0.1)
-
-                for j in range(2):
-                    ax = plt.Subplot(fig, inner[j])
-                    t = ax.text(0.5, 0.5, 'ayy')
-                    fig.add_subplot(ax)
-        '''
-
-
         fig = plt.figure(figsize = (50, 5))
 
-        #outer = gridspec.GridSpec(len(comparison), 2, wspace = 0.2, hspace = 0.2)
-        outer = fig.add_gridspec(len(comparison), 2, wspace = 0.2, hspace = 0.2)
+        outer = fig.add_gridspec(len(comparison), 1, wspace = 0.2, hspace = 0.2)
 
         i = 0
         for choice in comparison:
+
+            inner = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec =
+                    outer[0], wspace= 0.1, hspace = 0.1)
+
+            ind_fig = plt.figure(figsize = (7,5))
+            ax = plt.Subplot(fig, inner[0])
+            ax2 = plt.Subplot(fig, inner[1])
+
+            fig.add_subplot(ax)
+            fig.add_subplot(ax2)
             for left in left_options:
-
-                inner = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec =
-                        outer[i], wspace= 0.1, hspace = 0.1)
-
-                ind_fig = plt.figure(figsize = (7,5))
-                ax = plt.Subplot(fig, inner[0])
-                ax2 = plt.Subplot(fig, inner[1])
                 stem = get_filename_stem(target, parent_dir, choice, left)
                 time_filename = stem[0] + "time.npy"
 
@@ -376,7 +360,7 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
                 #you can't say 'fig.plt()', but I don't think this is proper
                 ax.plot(time, volt, linewidth = 0.5, color = "#3333cc",
                         alpha = 0.5, )
-                ax.set_ylim((volt.min() * 1.01, volt.max() * 0.99))
+                #ax.set_ylim((volt.min() * 1.01, volt.max() * 0.99))
 
                 plt.plot(time, volt, linewidth = 0.5, alpha = 0.5)
 
@@ -409,34 +393,17 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
                 plt.close(ind_fig)
 
                 ax.set(xlabel = xlabel, ylabel = ylabel)
-                ax2.set(xlabel = "Frequency (Hz)", ylabel = ylabel)
+                ax2.set(xlabel = "Frequency (Hz)", fontsize = 20)
 
-                buff = (target_max - target_min) * 0.1
-                #ax.set_ylim(target_min - buff, target_max + buff)
-
-                '''
-                if(j == 0):
-                    label = dirname_to_title(choice)
-
-                    ax.annotate(label, xy=(-0.65,0.5), xycoords=("axes fraction",
-                        "axes fraction"), weight = "bold")
-
-                if(i == 0):
-                    if(left):
-                        label = "Left"
-                    else:
-                        label = "Right"
-
-                    ax.annotate(label, xy=(0.45,1.1), xycoords=("axes fraction",
-                        "axes fraction"), weight = "bold")
-                subplot_counter = subplot_counter + 1
-                '''
+                #ax.annotate(label, xy=(-0.65,0.5), xycoords=("axes fraction",
+                    #"axes fraction"), weight = "bold")
 
                 ax.set_title("Voltage Trace")
-                ax.annotate("are you kidding me where is this thing", xy = (0.5,0.5))
+                '''
+                ax.annotate("are you kidding me where is this thing", xycoords =
+                        ("axes fraction", "axes fraction"), xy = (1,1))
+                '''
                 ax2.set_title("SPD")
-                fig.add_subplot(ax)
-                fig.add_subplot(ax2)
 
                 i = i + 1
 
@@ -447,9 +414,6 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
 
         if(average):
             title = title + " (Average across %d neurons)" % volt.shape[0]
-
-        f.suptitle(title, x = 0.6, fontsize = 15)
-
 
         output_dir = "output/figures/" + parent_dir
         filename = target
