@@ -3,30 +3,36 @@ from brian2 import *
 import time
 import os
 import argparse
+
 def main():
 
     timestamp = str(int(time.time()))
 
-    run_network(timestamp);
+    num_runs = 10
 
-    print("Output written to directory: %s" % timestamp)
-
-def run_network(timestamp):
-
-    seed(555)
 
     prefs.codegen.target = 'numpy'
     BrianLogger.log_level_debug()
 
+    for i in range(num_runs):
+
+        run_network(timestamp, i);
+
+    print("Output written to directory: %s" % timestamp)
+
+def run_network(timestamp, i):
+
+    print("%s %d" % (timestamp, i))
+
     #full_model()
-    cortex_unconnected(timestamp)
+    cortex_unconnected(timestamp, i)
 
-def cortex_unconnected(timestamp):
+def cortex_unconnected(timestamp, i):
 
-    name = "cortex_test_no_rnd"
+    name = "cortex_only_no_random"
 
     #Time constants
-    duration = 2*second
+    duration = 1*second
     t_step = 0.02*ms
 
     #Global Variables Across Thalamus Cells
@@ -803,8 +809,11 @@ def cortex_unconnected(timestamp):
 
     '''
     stem = "output/" + name + "/"
+    os.makedirs(stem, exist_ok = True)
+    stem = stem + str(i) + "/"
+    print(stem)
 
-    os.mkdir(stem)
+    os.makedirs(stem, exist_ok = True)
 
     np.save(stem + "PYL_time.npy", PYL_volt.t)
     np.save(stem + "PYL_volt.npy", PYL_volt.v)

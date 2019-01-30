@@ -1,24 +1,31 @@
 #!/usr/bin/env python3
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+from scipy import signal
 import os
+import glob
 
 def main():
+    parent_dir = "cortonly"
 
-    parent_dir = "2s_3"
+    #comparison = ["unconnected", "physiological", "fully_connected"]
+    #comparison = ["cortex_only_no_random", "cortex_only_no_random2"]
+    comparison = ["cortex_only_no_random"]
+    #targets = ['PY', 'HTC', 'RTC', 'FS', 'IN', 'RE', 'TC']
+    targets = ['PY', 'FS']
 
-    comparison = ["unconnected", "physiological", "fully_connected"]
-    targets = ['PY', 'HTC', 'RTC', 'FS', 'IN', 'RE', 'TC']
     left_options = [True,False]
 
-    voltage_traces_overlayed(targets, comparison, left_options, parent_dir,
-            average = True)
-    heatmaps(targets, comparison, left_options, parent_dir)
-    voltage_traces(targets, comparison, left_options, parent_dir)
+    #voltage_traces(targets, comparison, left_options, parent_dir)
     voltage_traces(targets, comparison, left_options, parent_dir, average = True)
-    percentage(targets, comparison, left_options, parent_dir)
-    percentage_overlayed(targets, comparison, left_options, parent_dir)
+    '''
     voltage_traces_overlayed(targets, comparison, left_options, parent_dir)
+    percentage_overlayed(targets, comparison, left_options, parent_dir)
+    percentage(targets, comparison, left_options, parent_dir)
+    voltage_traces_overlayed(targets, comparison, left_options, parent_dir)
+    heatmaps(targets, comparison, left_options, parent_dir)
+    '''
 
 #name directory structure and filename redundantly in case they get separated
 #also makes directories required to write files
@@ -228,19 +235,75 @@ def heatmaps(targets, comparison, left_options, parent_dir):
 
 def get_filename_stem(target, parent_dir, choice, is_left):
 
-    stem = "output/" + parent_dir + "/%s/" % choice
+    stems = glob.glob("output/" + parent_dir + "/" + choice + "/*/")
 
     if(is_left):
         name = target + "L_"
     else:
         name = target + "R_"
 
-    return stem + name
+    stems = [stem + name for stem in stems]
+    return stems
+
+def get_file_key(target, parent_dir, choice, is_left):
+
+    s = target + parent_dir + choice + str(is_left)
+    return s
+
+def plot_spd(ax, volt):
+
+    volt = volt - volt.mean()
+    ps = np.abs(np.fft.fft(volt))**2
+
+    time_step = .02 * .001
+
+    freqs = np.fft.fftfreq(volt.size, time_step)
+    idx = np.argsort(freqs)
+
+    ax.plot(freqs[idx], ps[idx])
+    ax.set_xlim((0,30))
 
 def voltage_traces(targets, comparison, left_options, parent_dir, average = False):
 
     plt.rcParams.update({'font.size':6})
     fs = 12
+
+    fig = plt.figure(figsize = (10,8))
+
+    outer = gridspec.GridSpec(len(comparison), 2, wspace = 0.1, hspace = 0.2)
+
+    file_dic = {}
+    neuron_counts = {}
+
+    num_runs = len(get_filename_stem("PY", parent_dir, comparison[0], True))
+
+    #read in all files and average
+    for target in targets:
+        for choice in comparison:
+            for left in left_options:
+                stems = get_filename_stem(target, parent_dir, choice, left)
+                #determine size of array from first file
+                volt_filename = stems[0] + "volt.npy"
+                volt = np.load(volt_filename)
+                length = volt.shape[1]
+                n_neurons = volt.shape[0]
+                neuron_counts[target] = n_neurons
+
+                final_array = np.empty(shape = (length,))
+                for stem in stems:
+                    volt_filename = stem + "volt.npy"
+                    volt = np.load(volt_filename)
+
+
+                    #average individually
+                    volt = np.mean(volt, axis = 0)
+                    final_array = np.add(final_array, volt)
+
+                #total average
+                final_array = final_array / num_runs
+
+                key = get_file_key(target, parent_dir, choice, left)
+                file_dic[key] = final_array
 
     for target in targets:
 
@@ -251,9 +314,9 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
 
         for choice in comparison:
             for left in left_options:
-                stem = get_filename_stem(target, parent_dir, choice, left)
-                volt_filename = stem + "volt.npy"
-                volt = np.load(volt_filename)
+                volt = file_dic[get_file_key(target, parent_dir, choice,
+                    left)]
+
                 mi = volt.min()
                 ma = volt.max()
                 if mi < target_min:
@@ -261,60 +324,68 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
                 if ma > target_max:
                     target_max = ma
 
-        f, axarr = plt.subplots(len(comparison),2)
+        f, axarr = plt.subplots(len(comparison),4)
 
-        subplot_counter = 1
+        '''
+        fig = plt.figure(figsize = (30, 10))
+        outer = gridspec.GridSpec(len(comparison), 2, wspace = 0.2, hspace = 0.2)
+
+        for i in range(len(comparison) * 2):
+
+                inner = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec =
+                        outer[i], wspace= 0.2, hspace = 0.1)
+
+                for j in range(2):
+                    ax = plt.Subplot(fig, inner[j])
+                    t = ax.text(0.5, 0.5, 'ayy')
+                    fig.add_subplot(ax)
+        '''
+
+
+        fig = plt.figure(figsize = (50, 5))
+
+        #outer = gridspec.GridSpec(len(comparison), 2, wspace = 0.2, hspace = 0.2)
+        outer = fig.add_gridspec(len(comparison), 2, wspace = 0.2, hspace = 0.2)
+
         i = 0
         for choice in comparison:
-            j = 0
-
             for left in left_options:
 
+                inner = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec =
+                        outer[i], wspace= 0.1, hspace = 0.1)
+
                 ind_fig = plt.figure(figsize = (7,5))
-                ax = axarr[i,j]
+                ax = plt.Subplot(fig, inner[0])
+                ax2 = plt.Subplot(fig, inner[1])
                 stem = get_filename_stem(target, parent_dir, choice, left)
-                time_filename = stem + "time.npy"
-                volt_filename = stem + "volt.npy"
+                time_filename = stem[0] + "time.npy"
 
                 time = np.load(time_filename)
-                volt = np.load(volt_filename)
+                volt = file_dic[get_file_key(target, parent_dir, choice, left)]
 
+                #trim out first 10%
+                length = time.shape[0]
+                time = time[int(length * 0.1):]
+                volt = volt[int(length * 0.1):]
+
+                volt = volt * 1000
+
+                plot_spd(ax2, volt)
 
                 #ax is in group, plt is individual
                 #you can't say 'fig.plt()', but I don't think this is proper
+                ax.plot(time, volt, linewidth = 0.5, color = "#3333cc",
+                        alpha = 0.5, )
+                ax.set_ylim((volt.min() * 1.01, volt.max() * 0.99))
 
-                if average:
+                plt.plot(time, volt, linewidth = 0.5, alpha = 0.5)
 
-                    num_neurons = volt.shape[0]
-                    num_points = volt.shape[1]
-                    values = np.empty(shape = (volt.shape[1]))
-                    for k in range(num_points):
-
-                        s = 0
-                        for l in range(num_neurons):
-                            s = s + volt[l,k]
-                        values[k] = s / num_neurons
-
-
-                    ax.plot(time, values, linewidth = 0.5, color = "#3333cc")
-                    plt.plot(time, values, linewidth = 1)
-
-                    ind_filename = generate_output_filename(parent_dir, target,
-                        left, choice, 'average_voltage_trace')
-
-                else:
-                    for x in range(volt.shape[0]):
-                        ax.plot(time, volt[x], linewidth = 0.5, color = "#3333cc",
-                                alpha = 0.5)
-
-                        plt.plot(time, volt[x], linewidth = 0.5, alpha = 0.5)
-
-                    ind_filename = generate_output_filename(parent_dir, target,
-                        left, choice, 'voltage_trace')
+                ind_filename = generate_output_filename(parent_dir, target,
+                    left, choice, 'voltage_trace')
 
 
                 xlabel = "Time (seconds)"
-                ylabel = "Voltage (volts)"
+                ylabel = "Voltage (millivolts)"
 
                 plt.xlabel(xlabel, fontsize = fs)
                 plt.ylabel(ylabel, fontsize = fs)
@@ -330,7 +401,7 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
                 else:
                     title = title + " (Right)"
                 if(average):
-                    title = title + " Average across %d neurons" % volt.shape[0]
+                    title = title + " Average across %d neurons and %d runs" % (neuron_counts[target], num_runs)
 
                 plt.title(title, fontsize = fs)
                 print(ind_filename)
@@ -338,10 +409,12 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
                 plt.close(ind_fig)
 
                 ax.set(xlabel = xlabel, ylabel = ylabel)
+                ax2.set(xlabel = "Frequency (Hz)", ylabel = ylabel)
 
                 buff = (target_max - target_min) * 0.1
-                ax.set_ylim(target_min - buff, target_max + buff)
+                #ax.set_ylim(target_min - buff, target_max + buff)
 
+                '''
                 if(j == 0):
                     label = dirname_to_title(choice)
 
@@ -357,11 +430,18 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
                     ax.annotate(label, xy=(0.45,1.1), xycoords=("axes fraction",
                         "axes fraction"), weight = "bold")
                 subplot_counter = subplot_counter + 1
-                j = j + 1
-            i = i + 1
+                '''
+
+                ax.set_title("Voltage Trace")
+                ax.annotate("are you kidding me where is this thing", xy = (0.5,0.5))
+                ax2.set_title("SPD")
+                fig.add_subplot(ax)
+                fig.add_subplot(ax2)
+
+                i = i + 1
 
         #fragile, handle with care
-        f.tight_layout(rect=[0.15,0,1,0.9])
+        #f.tight_layout(rect=[0.15,0,1,0.9])
 
         title = target
 
@@ -387,7 +467,8 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
 
         print(output_filename)
 
-        f.savefig(output_filename, pad_inches = 10)
+        #fig.savefig(output_filename, pad_inches = 10)
+        fig.savefig(output_filename)
         plt.close()
 
 def percentage_overlayed(targets, comparison, left_options, parent_dir):
@@ -505,23 +586,23 @@ def voltage_traces_overlayed(targets, comparison, left_options, parent_dir, aver
                 n_neurons = volt.shape[0]
                 time_steps = volt.shape[1]
 
-                averaged = np.empty(shape = (time_steps))
-                for m in range(time_steps):
-                    s = 0
-                    for n in range(n_neurons):
-                        s = s + volt[n,m]
-                    averaged[m] = s / n_neurons
+                if(average):
+                    averaged = np.empty(shape = (time_steps))
+                    for m in range(time_steps):
+                        s = 0
+                        for n in range(n_neurons):
+                            s = s + volt[n,m]
+                        averaged[m] = s / n_neurons
 
-                mi = averaged.min()
-                ma = averaged.max()
+                    mi = averaged.min()
+                    ma = averaged.max()
 
-                if mi < target_min:
-                    target_min = mi
-                if ma > target_max:
-                    target_max = ma
+                    if mi < target_min:
+                        target_min = mi
+                    if ma > target_max:
+                        target_max = ma
 
-            if(average):
-                for_cross_corr = []
+                    for_cross_corr = []
 
             for left in left_options:
 
@@ -540,8 +621,7 @@ def voltage_traces_overlayed(targets, comparison, left_options, parent_dir, aver
                 time = np.load(time_filename)
                 volt = np.load(volt_filename)
 
-                if average:
-
+                if average: 
                     num_neurons = volt.shape[0]
                     num_points = volt.shape[1]
                     values = np.empty(shape = (volt.shape[1]))
@@ -593,12 +673,20 @@ def voltage_traces_overlayed(targets, comparison, left_options, parent_dir, aver
                 a = for_cross_corr[0]
                 b = for_cross_corr[1]
 
+                '''
                 za = (a - a.mean()) / a.std()
                 zb = (b - b.mean()) / b.std()
 
                 cc = np.correlate(za,zb) / a.shape[0]
 
-                ax.annotate("CC: %.2f" % cc, xy = (-0.3,0.4), xycoords = 
+                ax.annotate("CC: %.2f" % cc, xy = (-0.3,0.3), xycoords = 
+                    ("axes fraction", "axes fraction"))
+                '''
+                f, c = signal.coherence(a,b)
+                plt.figure()
+                plt.plot(f,c)
+                plt.show()
+                ax.annotate("C: %.2f" % c, xy = (-0.3,0.3), xycoords = 
                     ("axes fraction", "axes fraction"))
 
         #still fragile
