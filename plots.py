@@ -11,7 +11,7 @@ def main():
 
     #comparison = ["unconnected", "physiological", "fully_connected"]
     #comparison = ["cortex_only_no_random", "cortex_only_no_random2"]
-    comparison = ["cortex_only_no_random"]
+    comparison = ["cortex_unconnected", "cortex_unconnected1"]
     #targets = ['PY', 'HTC', 'RTC', 'FS', 'IN', 'RE', 'TC']
     targets = ['PY', 'FS']
 
@@ -318,29 +318,46 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
     num_runs = len(get_filename_stem(targets[0], parent_dir, comparison[0],
         left_options[0]))
 
-    plt.rcParams.update({'font.size':20})
+    plt.rcParams.update({'font.size':10})
     fs = 12
-
-    outer = gridspec.GridSpec(len(comparison), 2, wspace = 0.1, hspace = 0.2)
 
     for target in targets:
 
         fig = plt.figure(figsize = (30, 5))
 
-        outer = fig.add_gridspec(len(comparison), 1, wspace = 0.2, hspace = 0.2)
+        outer = fig.add_gridspec(len(comparison), 1, wspace = 0.2, hspace = 0.5)
 
-        for choice in comparison:
+        for i, choice in enumerate(comparison):
 
-            inner = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec =
-                    outer[0], wspace= 0.1, hspace = 0.1)
+            inner = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec =
+                    outer[i], wspace= 0.2, hspace = 0.1)
 
             ind_fig = plt.figure(figsize = (7,5))
 
             ax = plt.Subplot(fig, inner[0])
             ax2 = plt.Subplot(fig, inner[1])
+            ax3 = plt.Subplot(fig, inner[2])
 
             fig.add_subplot(ax)
             fig.add_subplot(ax2)
+            fig.add_subplot(ax3)
+
+            #coherence plot
+            x1 = file_dic[get_file_key(target, parent_dir, choice, True)]
+            x2 = file_dic[get_file_key(target, parent_dir, choice, False)]
+
+            #trim out first 50%
+            x1 = x1[x1.size // 2:]
+            x2 = x2[x2.size // 2:]
+            
+            (x,y) = signal.coherence(x1, x2, fs = 1 / (0.02 * 0.001), detrend =
+                    "linear")
+
+            ax3.semilogy(x,y)
+            ax3.set_xlabel("Frequency (Hz)")
+            ax3.set_ylabel("Power")
+            ax3.set_title("Coherence (only from second half)")
+            #ax3.set_xlim((0,100))
 
             #for left in left_options:
             for left in left_options:
@@ -367,8 +384,6 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
 
                 ax.plot(time, volt, color = color, label = label)
 
-                plt.plot(time, volt, linewidth = 0.5, alpha = 0.5)
-
                 #trim out first half for SPD
                 length = time.shape[0]
                 time = time[int(length * 0.5):]
@@ -376,8 +391,6 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
 
 
                 plot_spd(ax2, volt, color = color, label = label)
-                ind_filename = generate_output_filename(parent_dir, target,
-                    left, choice, 'voltage_trace')
 
                 ax.legend()
                 ax2.legend()
@@ -385,33 +398,16 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
                 xlabel = "Time (seconds)"
                 ylabel = "Voltage (millivolts)"
 
-                plt.xlabel(xlabel, fontsize = fs)
-                plt.ylabel(ylabel, fontsize = fs)
-
-                #individual plot title
-                title = target
-
-                title = title + " (%s)" % dirname_to_title(choice)
-
-                if(left):
-
-                    title = title + " (Left)"
-                else:
-                    title = title + " (Right)"
-                if(average):
-                    title = title + " Average across %d neurons and %d runs" % (neuron_counts[target], num_runs)
-
-                plt.title(title, fontsize = fs)
-                print(ind_filename)
-                ind_fig.savefig(ind_filename, bbox_inches = "tight")
-                plt.close(ind_fig)
 
                 ax.set(xlabel = xlabel, ylabel = ylabel)
-                ax2.set_xlabel("Frequency (Hz)", fontsize = 20)
-                ax2.set_ylabel("Magnitude", fontsize = 20)
+                ax2.set_xlabel("Frequency (Hz)")
+                ax2.set_ylabel("Magnitude")
 
                 ax.set_title("Voltage Trace")
                 ax2.set_title("SPD (only from second half)")
+
+                ax.annotate(choice, xy=(-0.4,0.5), xycoords=("axes fraction",
+                    "axes fraction"), weight = "bold")
 
         title = target
 
