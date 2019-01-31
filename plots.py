@@ -321,36 +321,14 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
     plt.rcParams.update({'font.size':20})
     fs = 12
 
-    fig = plt.figure(figsize = (10,8))
-
     outer = gridspec.GridSpec(len(comparison), 2, wspace = 0.1, hspace = 0.2)
 
     for target in targets:
 
-        #find axis limits
-        #don't think it's possible to calculate on the fly
-        target_min = 100000
-        target_max = -100000
-
-        for choice in comparison:
-            for left in left_options:
-                volt = file_dic[get_file_key(target, parent_dir, choice,
-                    left)]
-
-                mi = volt.min()
-                ma = volt.max()
-                if mi < target_min:
-                    target_min = mi
-                if ma > target_max:
-                    target_max = ma
-
-        fig = plt.figure(figsize = (50, 5))
+        fig = plt.figure(figsize = (30, 5))
 
         outer = fig.add_gridspec(len(comparison), 1, wspace = 0.2, hspace = 0.2)
 
-        volt = file_dic[get_file_key("PY", parent_dir, choice, True)]
-
-        i = 0
         for choice in comparison:
 
             inner = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec =
@@ -372,10 +350,10 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
                 time = np.load(time_filename)
                 volt = file_dic[get_file_key(target, parent_dir, choice, left)]
 
-                #trim out first 10%
+                #trim out first 20%
                 length = time.shape[0]
-                time = time[int(length * 0.1):]
-                volt = volt[int(length * 0.1):]
+                time = time[int(length * 0.2):]
+                volt = volt[int(length * 0.2):]
 
                 volt = volt * 1000
 
@@ -425,26 +403,15 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
 
                 plt.title(title, fontsize = fs)
                 print(ind_filename)
-                ind_fig.savefig(ind_filename)
+                ind_fig.savefig(ind_filename, bbox_inches = "tight")
                 plt.close(ind_fig)
 
                 ax.set(xlabel = xlabel, ylabel = ylabel)
-                ax2.set(xlabel = "Frequency (Hz)", ylabel = "Magnitude")
-
-                #ax.annotate(label, xy=(-0.65,0.5), xycoords=("axes fraction",
-                    #"axes fraction"), weight = "bold")
+                ax2.set_xlabel("Frequency (Hz)", fontsize = 20)
+                ax2.set_ylabel("Magnitude", fontsize = 20)
 
                 ax.set_title("Voltage Trace")
-                '''
-                ax.annotate("are you kidding me where is this thing", xycoords =
-                        ("axes fraction", "axes fraction"), xy = (1,1))
-                '''
                 ax2.set_title("SPD (only from second half)")
-
-                i = i + 1
-
-        #fragile, handle with care
-        #f.tight_layout(rect=[0.15,0,1,0.9])
 
         title = target
 
@@ -467,8 +434,7 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
 
         print(output_filename)
 
-        #fig.savefig(output_filename, pad_inches = 10)
-        fig.savefig(output_filename)
+        fig.savefig(output_filename, bbox_inches = "tight")
         plt.close()
 
 def percentage_overlayed(targets, comparison, left_options, parent_dir):
