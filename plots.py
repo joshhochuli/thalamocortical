@@ -250,7 +250,7 @@ def get_file_key(target, parent_dir, choice, is_left):
     s = target + parent_dir + choice + str(is_left)
     return s
 
-def plot_spd(ax, volt):
+def plot_spd(ax, volt, color = "black", label = ""):
 
     volt = volt - volt.mean()
     ps = np.abs(np.fft.fft(volt))**2
@@ -260,10 +260,63 @@ def plot_spd(ax, volt):
     freqs = np.fft.fftfreq(volt.size, time_step)
     idx = np.argsort(freqs)
 
-    ax.plot(freqs[idx], ps[idx])
+    ax.plot(freqs[idx], ps[idx], color = color, label = label)
     ax.set_xlim((0,30))
 
+def get_file_dic(targets, parent_dir, comparison, left_options):
+
+    file_dic = {}
+    neuron_counts = {}
+
+    num_runs = len(get_filename_stem(targets[0], parent_dir, comparison[0],
+        left_options[0]))
+
+    #read in all files and average
+    for target in targets:
+        for choice in comparison:
+            for left in left_options:
+                stems = get_filename_stem(target, parent_dir, choice, left)
+
+                key = get_file_key(target, parent_dir, choice, left)
+
+                #determine size of array from first file
+                volt_filename = stems[0] + "volt.npy"
+                volt = np.load(volt_filename)
+
+                length = volt.shape[1]
+                n_neurons = volt.shape[0]
+
+                neuron_counts[target] = n_neurons
+
+                final_array = np.zeros(shape = (length,))
+
+                for stem in stems:
+                    volt_filename = stem + "volt.npy"
+                    volt = np.load(volt_filename)
+
+                    #average individually
+                    volt = np.mean(volt, axis = 0)
+                    final_array = np.add(final_array, volt)
+
+
+
+                #total average
+                final_array = final_array / num_runs
+
+                file_dic[key] = final_array
+
+                time_filename = stems[0] + "time.npy"
+                time = np.load(time_filename)
+
+    return (file_dic, neuron_counts)
+
 def voltage_traces(targets, comparison, left_options, parent_dir, average = False):
+
+    (file_dic, neuron_counts) = get_file_dic(targets, parent_dir, comparison,
+            left_options)
+
+    num_runs = len(get_filename_stem(targets[0], parent_dir, comparison[0],
+        left_options[0]))
 
     plt.rcParams.update({'font.size':20})
     fs = 12
@@ -271,39 +324,6 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
     fig = plt.figure(figsize = (10,8))
 
     outer = gridspec.GridSpec(len(comparison), 2, wspace = 0.1, hspace = 0.2)
-
-    file_dic = {}
-    neuron_counts = {}
-
-    num_runs = len(get_filename_stem("PY", parent_dir, comparison[0], True))
-
-    #read in all files and average
-    for target in targets:
-        for choice in comparison:
-            for left in left_options:
-                stems = get_filename_stem(target, parent_dir, choice, left)
-                #determine size of array from first file
-                volt_filename = stems[0] + "volt.npy"
-                volt = np.load(volt_filename)
-                length = volt.shape[1]
-                n_neurons = volt.shape[0]
-                neuron_counts[target] = n_neurons
-
-                final_array = np.empty(shape = (length,))
-                for stem in stems:
-                    volt_filename = stem + "volt.npy"
-                    volt = np.load(volt_filename)
-
-
-                    #average individually
-                    volt = np.mean(volt, axis = 0)
-                    final_array = np.add(final_array, volt)
-
-                #total average
-                final_array = final_array / num_runs
-
-                key = get_file_key(target, parent_dir, choice, left)
-                file_dic[key] = final_array
 
     for target in targets:
 
@@ -328,6 +348,8 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
 
         outer = fig.add_gridspec(len(comparison), 1, wspace = 0.2, hspace = 0.2)
 
+        volt = file_dic[get_file_key("PY", parent_dir, choice, True)]
+
         i = 0
         for choice in comparison:
 
@@ -335,11 +357,14 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
                     outer[0], wspace= 0.1, hspace = 0.1)
 
             ind_fig = plt.figure(figsize = (7,5))
+
             ax = plt.Subplot(fig, inner[0])
             ax2 = plt.Subplot(fig, inner[1])
 
             fig.add_subplot(ax)
             fig.add_subplot(ax2)
+
+            #for left in left_options:
             for left in left_options:
                 stem = get_filename_stem(target, parent_dir, choice, left)
                 time_filename = stem[0] + "time.npy"
@@ -354,19 +379,30 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
 
                 volt = volt * 1000
 
-                plot_spd(ax2, volt)
+                if(left):
+                    color = "red"
+                    label = "Left"
 
-                #ax is in group, plt is individual
-                #you can't say 'fig.plt()', but I don't think this is proper
-                ax.plot(time, volt, linewidth = 0.5, color = "#3333cc",
-                        alpha = 0.5, )
-                #ax.set_ylim((volt.min() * 1.01, volt.max() * 0.99))
+                else:
+                    color = "blue"
+                    label = "Right"
+
+                ax.plot(time, volt, color = color, label = label)
 
                 plt.plot(time, volt, linewidth = 0.5, alpha = 0.5)
 
+                #trim out first half for SPD
+                length = time.shape[0]
+                time = time[int(length * 0.5):]
+                volt = volt[int(length * 0.5):]
+
+
+                plot_spd(ax2, volt, color = color, label = label)
                 ind_filename = generate_output_filename(parent_dir, target,
                     left, choice, 'voltage_trace')
 
+                ax.legend()
+                ax2.legend()
 
                 xlabel = "Time (seconds)"
                 ylabel = "Voltage (millivolts)"
@@ -393,7 +429,7 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
                 plt.close(ind_fig)
 
                 ax.set(xlabel = xlabel, ylabel = ylabel)
-                ax2.set(xlabel = "Frequency (Hz)", fontsize = 20)
+                ax2.set(xlabel = "Frequency (Hz)", ylabel = "Magnitude")
 
                 #ax.annotate(label, xy=(-0.65,0.5), xycoords=("axes fraction",
                     #"axes fraction"), weight = "bold")
@@ -403,7 +439,7 @@ def voltage_traces(targets, comparison, left_options, parent_dir, average = Fals
                 ax.annotate("are you kidding me where is this thing", xycoords =
                         ("axes fraction", "axes fraction"), xy = (1,1))
                 '''
-                ax2.set_title("SPD")
+                ax2.set_title("SPD (only from second half)")
 
                 i = i + 1
 
