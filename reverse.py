@@ -8,38 +8,45 @@ def main():
 
     timestamp = str(int(time.time()))
 
-    num_runs = 10
+    num_runs = 1
 
     prefs.codegen.target = 'numpy'
     BrianLogger.log_level_debug()
 
     duration = 1*second
 
-    for i in range(num_runs):
+    frequencies = [0,5,10,15,20]
 
-        print("RUN: %d" % i)
+    for frequency in frequencies:
 
-        cortex_unconnected(timestamp, i, duration)
+        for i in range(num_runs):
 
-    print("Output written to directory: %s" % timestamp)
+            print("RUN: %d" % i)
 
-def cortex_unconnected(timestamp, i, duration):
+            run_name = str(frequency) + "hz"
 
-    name = "cortex_cortex_no_other_equations_reversed"
+            cortex_unconnected(run_name, i, duration, frequency)
 
-    stem = "output/" + name + "/" + timestamp + "/"
+
+def cortex_unconnected(run_name, i, duration, frequency):
+
+    name = "cortex_cortex_left_sin"
+
+    stem = "output/" + name + "/" + run_name + "/"
     print(stem)
 
     #Time constants
     t_step = 0.02*ms
+
+    t_d = t_step*numpy.arange(duration/t_step)/second
+    Sgn = TimedArray(sin(frequency*2*pi*t_d)*50*pA, dt = t_step)
 
     #Number of Each Cell Type(sqrt of # Thalamus Cells)
     nPY = 80
     nFS = 20
 
     #Main Izhikevich Equation, PY FS
-    main_PY_FS = '''
-    dv/dt = (k*(v - vr)*(v - vt) - u - iSyn + iStm)/Cm                                          :volt
+    shared_PY_FS = '''
     Cm                                                                                          :farad
     k                                                                                           :siemens/volt
     vt                                                                                          :volt
@@ -56,36 +63,39 @@ def cortex_unconnected(timestamp, i, duration):
     iStm                                                                                        :amp
     '''
 
-    left_PY_FS = main_PY_FS + '''
+    right_PY_FS = '''
+    dv/dt = (k*(v - vr)*(v - vt) - u - iSyn + iStm)/Cm                                          :volt
     iPYR                                                                                        :amp
     iFSR                                                                                        :amp
     iSyn = iPYR + iFSR                                                                          :amp
     LFP = abs(iPYR + iFSR)                                                                      :amp
-    '''
+    ''' + shared_PY_FS
 
-    right_PY_FS = main_PY_FS + '''
+    left_PY_FS = '''
+    dv/dt = (k*(v - vr)*(v - vt) - u - iSyn + iStm + Sgn(t))/Cm                                 :volt
     iPYL                                                                                        :amp
     iFSL                                                                                        :amp
     iSyn = iPYL + iFSL                                                                          :amp
     LFP = abs(iPYL + iFSL)                                                                      :amp
-    '''
+    ''' + shared_PY_FS
 
-    FSRg = NeuronGroup(nFS, left_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
+
+    FSRg = NeuronGroup(nFS, right_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
     v = c
     u += d
     ''', name = "FSRg")
 
-    PYRg = NeuronGroup(nPY, left_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
+    PYRg = NeuronGroup(nPY, right_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
     v = c
     u += d
     ''', name = "PYRg")
 
-    FSLg = NeuronGroup(nFS, right_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
+    FSLg = NeuronGroup(nFS, left_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
     v = c
     u += d
     ''', name = "FSLg")
 
-    PYLg = NeuronGroup(nPY, right_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
+    PYLg = NeuronGroup(nPY, left_PY_FS, method = 'rk4', dt = t_step, threshold = 'v>= vth', reset = '''
     v = c
     u += d
     ''', name = "PYLg")
@@ -300,5 +310,6 @@ def cortex_unconnected(timestamp, i, duration):
     s = open(settings_file, "w+")
     s.write("duration: %s\n" % duration)
 
+    print("Output written to directory: %s" % run_name)
 if __name__ == "__main__":
     main()
