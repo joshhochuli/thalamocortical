@@ -15,22 +15,23 @@ def main():
 
     duration = 1*second
 
-    frequencies = [0,5,10,15,20]
+    left_frequencies = [0,10,20]
+    right_frequencies = [0,10,20]
 
-    for frequency in frequencies:
+    for l_frequency in left_frequencies:
+        for r_frequency in right_frequencies:
+            for i in range(num_runs):
 
-        for i in range(num_runs):
+                run_name = str(l_frequency) + "hz_" + str(r_frequency) + "hz"
+                print(run_name)
 
-            print("RUN: %d" % i)
-
-            run_name = str(frequency) + "hz"
-
-            cortex_unconnected(run_name, i, duration, frequency)
+                cortex_only(run_name, i, duration, True, l_frequency, r_frequency)
 
 
-def cortex_unconnected(run_name, i, duration, frequency):
+def cortex_only(run_name, i, duration, connected, left_frequency,
+        right_frequency):
 
-    name = "cortex_cortex_left_sin"
+    name = "diff_stim_right_to_left"
 
     stem = "output/" + name + "/" + run_name + "/"
     print(stem)
@@ -39,7 +40,10 @@ def cortex_unconnected(run_name, i, duration, frequency):
     t_step = 0.02*ms
 
     t_d = t_step*numpy.arange(duration/t_step)/second
-    Sgn = TimedArray(sin(frequency*2*pi*t_d)*50*pA, dt = t_step)
+    l_Sgn = TimedArray(sin(left_frequency*2*pi*t_d)*50*pA, dt = t_step)
+    r_Sgn = TimedArray(sin(right_frequency*2*pi*t_d)*50*pA, dt = t_step)
+    
+    CC_prop = 1
 
     #Number of Each Cell Type(sqrt of # Thalamus Cells)
     nPY = 80
@@ -64,19 +68,23 @@ def cortex_unconnected(run_name, i, duration, frequency):
     '''
 
     right_PY_FS = '''
-    dv/dt = (k*(v - vr)*(v - vt) - u - iSyn + iStm)/Cm                                          :volt
+    dv/dt = (k*(v - vr)*(v - vt) - u - iSyn + iStm + r_Sgn(t))/Cm                                          :volt
     iPYR                                                                                        :amp
+    iPYR_cross                                                                                  :amp
     iFSR                                                                                        :amp
-    iSyn = iPYR + iFSR                                                                          :amp
-    LFP = abs(iPYR + iFSR)                                                                      :amp
+    iFSR_cross                                                                                  :amp
+    iSyn = iPYR + iPYR_cross + iFSR + iFSR_cross                                                :amp
+    LFP = abs(iPYR + iPYR_cross + iFSR + iFSR_cross)                                            :amp
     ''' + shared_PY_FS
 
     left_PY_FS = '''
-    dv/dt = (k*(v - vr)*(v - vt) - u - iSyn + iStm + Sgn(t))/Cm                                 :volt
+    dv/dt = (k*(v - vr)*(v - vt) - u - iSyn + iStm + l_Sgn(t))/Cm                                 :volt
     iPYL                                                                                        :amp
+    iPYL_cross                                                                                  :amp
     iFSL                                                                                        :amp
-    iSyn = iPYL + iFSL                                                                          :amp
-    LFP = abs(iPYL + iFSL)                                                                      :amp
+    iFSL_cross                                                                                  :amp
+    iSyn = iPYL + iPYL_cross + iFSL + iFSL_cross                                                :amp
+    LFP = abs(iPYL + iPYL_cross + iFSL + iFSL_cross)                                            :amp
     ''' + shared_PY_FS
 
 
@@ -216,6 +224,22 @@ def cortex_unconnected(run_name, i, duration, frequency):
     iFSL_post = iCS                                                                             :amp (summed)
     '''
 
+    iPYR_cross_eqs = '''
+    iPYR_cross_post = iCS                                                                             :amp (summed)
+    '''
+
+    iPYL_cross_eqs = '''
+    iPYL_cross_post = iCS                                                                             :amp (summed)
+    '''
+
+    iFSR_cross_eqs = '''
+    iFSR_cross_post = iCS                                                                             :amp (summed)
+    '''
+
+    iFSL_cross_eqs = '''
+    iFSL_cross_post = iCS                                                                             :amp (summed)
+    '''
+
     PYR_PYR_cs = Synapses(PYRg,PYRg,(PYFS_cs + iPYR_eqs),on_pre = prePYFS, 
             method = 'rk4', dt = t_step, name = "PYR_PYR_cs")
     PYR_FSR_cs = Synapses(FSRg,PYRg,(PYFS_cs + iFSR_eqs),on_pre = prePYFS, 
@@ -235,7 +259,6 @@ def cortex_unconnected(run_name, i, duration, frequency):
             method = 'rk4', dt = t_step, name = "FSL_PYL_cs")
     FSL_FSL_cs = Synapses(FSLg,FSLg,(PYFS_cs + iFSL_eqs),on_pre = prePYFS, 
             method = 'rk4', dt = t_step, name = "FSL_FSL_cs")
-
     #ipsilateral connection probabilities
     PY_PY_p = 0.5
     PY_FS_p = 0.8
@@ -280,6 +303,45 @@ def cortex_unconnected(run_name, i, duration, frequency):
     FSL_FSL_cs.tau = 10*ms
     FSL_FSL_cs.e_syn = -70*mV
     FSL_FSL_cs.g_spike = 0.03*nS
+
+
+    right_to_left = True
+    left_to_right = False
+
+    if(connected):
+
+        if(right_to_left):
+
+            PYL_PYR_cs = Synapses(PYRg,PYLg,(PYFS_cs + iPYL_cross_eqs),on_pre = prePYFS,
+                    method = 'rk4', dt = t_step, name = "PYL_PYR", )
+            PYL_PYR_cs.connect(p = PY_PY_p * CC_prop)
+            PYL_PYR_cs.tau = 2*ms
+            PYL_PYR_cs.e_syn = 0*mV
+            PYL_PYR_cs.g_spike = 0.3*nS
+
+            FSL_PYR_cs = Synapses(PYRg,FSLg,(PYFS_cs + iFSL_cross_eqs),on_pre = prePYFS,
+                    method = 'rk4', dt = t_step, name = "FSL_PYR", )
+            FSL_PYR_cs.connect(p = PY_FS_p * CC_prop)
+            FSL_PYR_cs.tau = 2*ms
+            FSL_PYR_cs.e_syn = 0*mV
+            FSL_PYR_cs.g_spike = 0.4*nS
+
+
+        if(left_to_right):
+
+            PYR_PYL_cs = Synapses(PYLg,PYRg,(PYFS_cs + iPYR_cross_eqs),on_pre = prePYFS,
+                    method = 'rk4', dt = t_step, name = "PYR_PYL", )
+            PYR_PYL_cs.connect(p = PY_PY_p * CC_prop)
+            PYR_PYL_cs.tau = 2*ms
+            PYR_PYL_cs.e_syn = 0*mV
+            PYR_PYL_cs.g_spike = 0.3*nS
+
+            FSR_PYL_cs = Synapses(PYLg,FSRg,(PYFS_cs + iFSR_cross_eqs),on_pre = prePYFS,
+                    method = 'rk4', dt = t_step, name = "FSR_PYL", )
+            FSR_PYL_cs.connect(p = PY_FS_p * CC_prop)
+            FSR_PYL_cs.tau = 2*ms
+            FSR_PYL_cs.e_syn = 0*mV
+            FSR_PYL_cs.g_spike = 0.4*nS
 
     PYR_volt = StateMonitor(PYRg, 'v', record = True)
     PYL_volt = StateMonitor(PYLg, 'v', record = True)
