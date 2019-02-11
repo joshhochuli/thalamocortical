@@ -5,35 +5,44 @@ import matplotlib.gridspec as gridspec
 from scipy import signal
 import os
 import glob
+import math
+import scipy.io
+
+import random
 
 def main():
-    parent_dir = "cortonly"
 
-    #comparison = ["unconnected", "physiological", "fully_connected"]
-    #comparison = ["cortex_only_no_random", "cortex_only_no_random2"]
-    comparison = ["cortex_unconnected", "cortex_unconnected1"]
-    #targets = ['PY', 'HTC', 'RTC', 'FS', 'IN', 'RE', 'TC']
+    parent_dir = "diff_stim_both_connected"
+
+    frequencies = ["0hz", "10hz", "20hz"]
+    comparison = []
+
+    for freq_a in frequencies:
+        for freq_b in frequencies:
+            comp = freq_a + "_" + freq_b
+            comparison.append(comp)
+
     targets = ['PY', 'FS']
-
     left_options = [True,False]
 
-    #voltage_traces(targets, comparison, left_options, parent_dir)
-    voltage_traces(targets, comparison, left_options, parent_dir, average = True)
+    file_dic = get_file_dic(targets, parent_dir, comparison,
+            left_options)
+
+    trace_spd_coherence(file_dic, targets, comparison, left_options, parent_dir)
+    rasters(file_dic, targets, comparison, left_options, parent_dir)
+    #voltage_traces(targets, comparison, left_options, parent_dir, average = True)
     '''
     voltage_traces_overlayed(targets, comparison, left_options, parent_dir)
     percentage_overlayed(targets, comparison, left_options, parent_dir)
     percentage(targets, comparison, left_options, parent_dir)
     voltage_traces_overlayed(targets, comparison, left_options, parent_dir)
-    heatmaps(targets, comparison, left_options, parent_dir)
-    '''
-
-#name directory structure and filename redundantly in case they get separated
+    heatmaps(targets, comparison, left_options, parent_dir) ''' 
+#name directory structure and filename redundantly in case they get separated 
 #also makes directories required to write files
-def generate_output_filename(parent_dir, target, left, choice, plot_type):
+def generate_output_filename(parent_dir, target, left, choice, plot_type): 
 
     output_dir = "output/figures/" + parent_dir + '/' + plot_type + '/'
-    filename = target
-
+    filename = target 
     output_dir = output_dir + choice +"/"
     filename = filename + "_" + choice
 
@@ -119,7 +128,7 @@ def percentage(targets, comparison, left_options, parent_dir):
 
                 #individual plot title
                 title = target
-                title = title + " (%s)" % dirname_to_title(choice) 
+                title = title + " (%s)" % dirname_totitle(choice) 
                 if(left):
                     title = title + " (Left)"
                 else:
@@ -176,7 +185,6 @@ def percentage(targets, comparison, left_options, parent_dir):
         f.savefig(output_filename, pad_inches = 10)
         plt.close()
 
-
 def heatmaps(targets, comparison, left_options, parent_dir):
 
     for target in targets:
@@ -228,11 +236,6 @@ def heatmaps(targets, comparison, left_options, parent_dir):
                 fig.savefig(output_filename)
                 plt.close()
 
-
-
-
-
-
 def get_filename_stem(target, parent_dir, choice, is_left):
 
     stems = glob.glob("output/" + parent_dir + "/" + choice + "/*/")
@@ -243,6 +246,7 @@ def get_filename_stem(target, parent_dir, choice, is_left):
         name = target + "R_"
 
     stems = [stem + name for stem in stems]
+
     return stems
 
 def get_file_key(target, parent_dir, choice, is_left):
@@ -250,7 +254,21 @@ def get_file_key(target, parent_dir, choice, is_left):
     s = target + parent_dir + choice + str(is_left)
     return s
 
-def plot_spd(ax, volt, color = "black", label = ""):
+def plot_spd(ax, volt, left):
+
+    #use copy for trimming so originals aren't altered
+    volt = np.copy(volt)
+
+    #trim out first half for SPD
+    length = volt.size
+    volt = volt[int(length * 0.5):]
+
+    if(left):
+        color = "red"
+        label = "Left"
+    else:
+        color = "blue"
+        label = "Right"
 
     volt = volt - volt.mean()
     ps = np.abs(np.fft.fft(volt))**2
@@ -261,12 +279,149 @@ def plot_spd(ax, volt, color = "black", label = ""):
     idx = np.argsort(freqs)
 
     ax.plot(freqs[idx], ps[idx], color = color, label = label)
-    ax.set_xlim((0,30))
+    ax.set_xlabel("Frequency (Hz)")
+    ax.set_ylabel("Magnitude")
+    ax.set_title("SPD (only from second half)")
+    ax.legend()
+    ax.set_xlim((0,50))
+    #ax.set_ylim((0,2.5 * (10**10)))
 
+def plot_raster(ax, volt, time, left):
+
+    cutoff = volt.mean() + (1.5 * volt.std())
+
+    raster_data = volt > cutoff
+    raster_data = raster_data.astype(int)
+
+    if(left):
+        cmap = "Reds"
+        title = "Left"
+    else:
+        cmap = "Blues"
+        title = "Right"
+    ax.imshow(raster_data, aspect = 1000, cmap = cmap)
+
+    #shifty indexing to get last time value to be labeled
+    step = volt.shape[1] // 5
+    pos = np.arange(0,volt.shape[1], step - 1)
+    lab = []
+    for val in pos:
+        lab.append("%.1f" % time[val])
+
+    ax.set_title(title)
+    ax.set_xticks(pos)
+    ax.set_xticklabels(lab)
+    ax.set_xlabel("Time (seconds)")
+    ax.set_ylabel("Neuron Index")
+
+def plot_trace(ax, volt, time, left):
+
+    #use copy for trimming so originals aren't altered
+    volt = np.copy(volt)
+    time = np.copy(time)
+
+    #trim out first 20%
+    length = time.shape[0]
+    time = time[int(length * 0.2):]
+    volt = volt[int(length * 0.2):]
+
+    if(left):
+        color = "red"
+        label = "Left"
+
+    else:
+        color = "blue"
+        label = "Right"
+
+    ax.plot(time, volt, color = color, label = label, linewidth = 0.5)
+    xlabel = "Time (seconds)"
+    ylabel = "Voltage (millivolts)"
+    ax.legend(loc = 1)
+    ax.set(xlabel = xlabel, ylabel = ylabel)
+    ax.set_title("Voltage Trace")
+    ax.set_ylim([-60,-20])
+
+def plot_coherence(ax, x1, x2):
+    
+    '''
+    x1 = np.linspace(0,100000, 10000000)
+    x1 = np.sin(2 * np.pi * x1) + np.sin(5 * 2 * np.pi * x1)
+    x2 = np.linspace(0,100000, 10000000)
+    x2 = np.sin(2 * np.pi * x2) + np.sin(5 * 2 * np.pi * x2)
+
+    noise = np.random.normal(0,0.1, x1.size)
+    x1 = np.add(x1, noise) 
+    noise = np.random.normal(0,0.1, x1.size)
+    x2 = np.add(x2, noise) 
+
+
+    (x,y) = signal.coherence(x1, x2, fs = 100)
+
+
+
+    plt.plot(x1[0:100])
+    plt.plot(x2[0:100])
+    plt.figure()
+    plt.semilogy(x,y**(1/2))
+    plt.show()
+    exit()
+
+    ''' 
+    x1 = x1.mean(axis = 0)
+    x2 = x2.mean(axis = 0)
+    plt.plot(x1)
+    plt.plot(x2)
+
+    plt.figure()
+
+
+    '''
+    x1 = signal.decimate(x1, 100)
+    x2 = signal.decimate(x2, 100)
+    '''
+    print(x1.size)
+    print(x1.size / 500)
+    x1 = signal.resample(x1, int(x1.size / 500))
+    x2 = signal.resample(x2, int(x2.size / 500))
+
+
+    np.savetxt('/home/josh/tmp/signal_1_downsampled.dat', x1)
+    np.savetxt('/home/josh/tmp/signal_2_downsampled.dat', x2)
+
+    '''
+    plt.plot(x1)
+    plt.plot(x2)
+    plt.show()
+    '''
+
+
+    #copy for trimming
+    x1 = np.copy(x1)
+    x2 = np.copy(x2)
+
+    #trim out first 50%
+    x1 = x1[x1.size // 2:]
+    x2 = x2[x2.size // 2:]
+    fs = 1 / (0.02 * 0.001)
+
+    fs = fs / 500
+
+    (x,y) = signal.coherence(x1, x2, fs = fs, detrend =
+            "linear", nperseg = fs)
+
+    #100hz is normal
+    #take one value for every 500
+
+    ax.semilogy(x,y, linewidth = 1)
+    ax.set_xlabel("Frequency (Hz)")
+    ax.set_ylabel("Power")
+    ax.set_title("Coherence (only from second half)")
+    #ax.set_xlim((0,100))
+
+#read in traces and compute average of each neuron across all runs
 def get_file_dic(targets, parent_dir, comparison, left_options):
 
     file_dic = {}
-    neuron_counts = {}
 
     num_runs = len(get_filename_stem(targets[0], parent_dir, comparison[0],
         left_options[0]))
@@ -283,154 +438,165 @@ def get_file_dic(targets, parent_dir, comparison, left_options):
                 volt_filename = stems[0] + "volt.npy"
                 volt = np.load(volt_filename)
 
+                volt = volt * 1000
+
                 length = volt.shape[1]
                 n_neurons = volt.shape[0]
 
-                neuron_counts[target] = n_neurons
 
-                final_array = np.zeros(shape = (length,))
+                per_neuron_array = np.zeros(shape = (length,))
 
-                for stem in stems:
+                for i, stem in enumerate(stems):
                     volt_filename = stem + "volt.npy"
                     volt = np.load(volt_filename)
 
-                    #average individually
-                    volt = np.mean(volt, axis = 0)
-                    final_array = np.add(final_array, volt)
+                    volt = volt * 1000
+                    per_neuron_array = np.add(per_neuron_array, volt)
 
+                per_neuron_array = per_neuron_array / num_runs
 
-
-                #total average
-                final_array = final_array / num_runs
-
-                file_dic[key] = final_array
+                file_dic[key] = per_neuron_array
 
                 time_filename = stems[0] + "time.npy"
                 time = np.load(time_filename)
 
-    return (file_dic, neuron_counts)
+    print("Done reading.")
+    return file_dic
 
-def voltage_traces(targets, comparison, left_options, parent_dir, average = False):
-
-    (file_dic, neuron_counts) = get_file_dic(targets, parent_dir, comparison,
-            left_options)
+def trace_spd_coherence(file_dic, targets, comparison, left_options, parent_dir):
 
     num_runs = len(get_filename_stem(targets[0], parent_dir, comparison[0],
         left_options[0]))
 
     plt.rcParams.update({'font.size':10})
-    fs = 12
 
     for target in targets:
 
-        fig = plt.figure(figsize = (30, 5))
+        fig = plt.figure(figsize = (20, 20))
 
-        outer = fig.add_gridspec(len(comparison), 1, wspace = 0.2, hspace = 0.5)
+
+        outer = fig.add_gridspec(len(comparison), 1, wspace = 0.1, hspace = 1)
 
         for i, choice in enumerate(comparison):
 
-            inner = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec =
-                    outer[i], wspace= 0.2, hspace = 0.1)
-
-            ind_fig = plt.figure(figsize = (7,5))
+            inner = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec =
+                    outer[i], wspace= 0.1, hspace = 0.1)
 
             ax = plt.Subplot(fig, inner[0])
             ax2 = plt.Subplot(fig, inner[1])
-            ax3 = plt.Subplot(fig, inner[2])
 
             fig.add_subplot(ax)
             fig.add_subplot(ax2)
-            fig.add_subplot(ax3)
 
-            #coherence plot
-            x1 = file_dic[get_file_key(target, parent_dir, choice, True)]
-            x2 = file_dic[get_file_key(target, parent_dir, choice, False)]
-
-            #trim out first 50%
-            x1 = x1[x1.size // 2:]
-            x2 = x2[x2.size // 2:]
-            
-            (x,y) = signal.coherence(x1, x2, fs = 1 / (0.02 * 0.001), detrend =
-                    "linear")
-
-            ax3.semilogy(x,y)
-            ax3.set_xlabel("Frequency (Hz)")
-            ax3.set_ylabel("Power")
-            ax3.set_title("Coherence (only from second half)")
-            #ax3.set_xlim((0,100))
-
-            #for left in left_options:
             for left in left_options:
                 stem = get_filename_stem(target, parent_dir, choice, left)
                 time_filename = stem[0] + "time.npy"
 
                 time = np.load(time_filename)
-                volt = file_dic[get_file_key(target, parent_dir, choice, left)]
+                key = get_file_key(target, parent_dir, choice, left)
+                volt = file_dic[key]
+                avg_volt = volt.mean(axis = 0)
 
-                #trim out first 20%
-                length = time.shape[0]
-                time = time[int(length * 0.2):]
-                volt = volt[int(length * 0.2):]
+                plot_trace(ax, avg_volt, time, left)
+                plot_spd(ax2, avg_volt, left)
 
-                volt = volt * 1000
+                choice_label = choice.split("_")
+                new = []
+                for item in choice_label:
+                    if item == "0hz":
+                        new.append("None")
+                    else:
+                        new.append(item)
 
-                if(left):
-                    color = "red"
-                    label = "Left"
-
-                else:
-                    color = "blue"
-                    label = "Right"
-
-                ax.plot(time, volt, color = color, label = label)
-
-                #trim out first half for SPD
-                length = time.shape[0]
-                time = time[int(length * 0.5):]
-                volt = volt[int(length * 0.5):]
-
-
-                plot_spd(ax2, volt, color = color, label = label)
-
-                ax.legend()
-                ax2.legend()
-
-                xlabel = "Time (seconds)"
-                ylabel = "Voltage (millivolts)"
-
-
-                ax.set(xlabel = xlabel, ylabel = ylabel)
-                ax2.set_xlabel("Frequency (Hz)")
-                ax2.set_ylabel("Magnitude")
-
-                ax.set_title("Voltage Trace")
-                ax2.set_title("SPD (only from second half)")
-
-                ax.annotate(choice, xy=(-0.4,0.5), xycoords=("axes fraction",
+                choice_label = "/".join(new)
+                ax.annotate(choice_label, xy=(-0.2,0.5), xycoords=("axes fraction",
                     "axes fraction"), weight = "bold")
 
         title = target
 
-        if(average):
-            title = title + " (Average across %d neurons)" % volt.shape[0]
+        for filetype in [".pdf", ".png"]:
+            filename = target
+            output_dir = "output/figures/" + parent_dir
 
-        output_dir = "output/figures/" + parent_dir
-        filename = target
-        if(average):
-            output_dir = output_dir + "/average_voltage_trace/"
-            filename = filename + "_grouped_average_voltage_trace.pdf"
-        else:
-            output_dir = output_dir + "/voltage_trace/"
-            filename = filename + "_grouped_voltage_trace.pdf"
+            output_dir = output_dir + "/trace_spd_coherence/"
+            filename = filename + "_trace_spd_coherence" + filetype
 
-        output_dir = output_dir + "grouped/"
-        os.makedirs(output_dir, exist_ok = True)
+            os.makedirs(output_dir, exist_ok = True)
 
-        output_filename = output_dir + filename
+            output_filename = output_dir + filename
 
-        print(output_filename)
+            print(output_filename)
 
-        fig.savefig(output_filename, bbox_inches = "tight")
+            titledict = {'fontweight':'bold',
+                         'fontsize':20,
+                         'horizontalalignment':'center'
+                        }
+
+            subtextdict = {'fontsize':10,
+                           'horizontalalignment':'center'
+                          }
+
+            fig.text(s = "Cortex with symmetrical projections", x = 0.5, y =
+                    0.93, fontdict = titledict)
+
+            fig.text(s = "LRP's are same probability as intra-hemisphere connections", x = 0.5, y = 0.92, fontdict = subtextdict)
+            fig.text(s = "Stimulation amplitude chosen arbitrarily to get visible effects", x = 0.5, y = 0.91, fontdict = subtextdict)
+            fig.text(s = "\"10hz/20hz\" is 10hz left stimulation, 20hz right stimulation", x = 0.5, y = 0.90, fontdict = subtextdict)
+
+            fig.savefig(output_filename, bbox_inches = "tight")
+
+        plt.close()
+
+
+def rasters(file_dic, targets, comparison, left_options, parent_dir):
+
+    plt.rcParams.update({'font.size':10})
+
+    for target in targets:
+
+        fig = plt.figure(figsize = (15,10))
+
+        outer = fig.add_gridspec(len(comparison),1, wspace = 0.2, hspace = 0.5)
+
+        for i, choice in enumerate(comparison):
+
+            inner = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec =
+                    outer[i], wspace= 0.1, hspace = 0.05)
+
+            for j, left in enumerate(left_options):
+
+                stem = get_filename_stem(target, parent_dir, choice, left)[0]
+                time_filename = stem + "time.npy"
+
+                time = np.load(time_filename)
+                volt = file_dic[get_file_key(target, parent_dir, choice, left)]
+                avg_volt = volt.mean(axis = 0)
+
+                ax = plt.Subplot(fig, inner[j])
+                if(left):
+                    ax.annotate(choice, xy=(-0.6,0.5), xycoords=("axes fraction",
+                     "axes fraction"), weight = "bold")
+
+                plot_raster(ax, volt, time, left)
+
+                fig.add_subplot(ax)
+
+        for filetype in [".pdf", ".png"]:
+            filename = target
+
+            output_dir = "output/figures/" + parent_dir
+
+            output_dir = output_dir + "/raster/"
+            filename = filename + "_raster" + filetype
+
+            os.makedirs(output_dir, exist_ok = True)
+
+            output_filename = output_dir + filename
+
+            print(output_filename)
+
+            fig.savefig(output_filename, bbox_inches = "tight")
+
         plt.close()
 
 def percentage_overlayed(targets, comparison, left_options, parent_dir):
@@ -469,6 +635,7 @@ def percentage_overlayed(targets, comparison, left_options, parent_dir):
                 for time in range(total_samples):
                     s = 0
                     for neuron in range(n_neurons):
+
 
                         #threshold is currently arbitrary
                         if voltage_data[neuron, time] > -0.051:
@@ -682,7 +849,4 @@ def voltage_traces_overlayed(targets, comparison, left_options, parent_dir, aver
 
 if __name__ == "__main__":
     main()
-
-
-
 
